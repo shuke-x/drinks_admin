@@ -1,0 +1,61 @@
+/* Single source of truth for semantic colour, typography and surface tokens. */
+:root {
+  color-scheme: light;
+  --ink: #e9edf3;
+  --oak-1: rgba(243, 246, 250, 0.82);
+  --oak-2: rgba(250, 251, 253, 0.76);
+  --oak-3: #dce3ec;
+  --line: rgba(74, 84, 99, 0.14);
+  --line-strong: rgba(74, 84, 99, 0.24);
+  --foam: #1d1d1f;
+  --smoke: #4b4b50;
+  --faint: #767680;
+  --brass: #303035;
+  --brass-bright: #303035;
+  --accent-text: #86522e;
+  --support-text: #574c44;
+  --hint-text: #74665c;
+  --link-primary: #0076d6;
+  --brass-soft: rgba(0, 0, 0, 0.07);
+  --green: #34a853;
+  --green-soft: rgba(52, 168, 83, 0.12);
+  --red: #d92d20;
+  --red-soft: rgba(217, 45, 32, 0.1);
+  --violet: #6e5bd4;
+  --violet-soft: rgba(110, 91, 212, 0.11);
+  --slate: #667085;
+  --slate-soft: rgba(102, 112, 133, 0.1);
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+  --font-mono: "SF Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --shadow: 0 24px 56px rgba(41, 53, 72, 0.11), 0 3px 10px rgba(41, 53, 72, 0.05);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #101114;
+  --oak-1: rgba(28, 29, 33, 0.74);
+  --oak-2: rgba(38, 39, 45, 0.88);
+  --oak-3: #303137;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --foam: #fff;
+  --smoke: #f3f4f6;
+  --faint: #c7c9cf;
+  --brass: #fff;
+  --brass-bright: #fff;
+  --accent-text: #f0bd8b;
+  --support-text: #d3c5b8;
+  --hint-text: #aa9b8e;
+  --link-primary: #69b8ff;
+  --brass-soft: rgba(255, 255, 255, 0.12);
+  --green: #5ac873;
+  --green-soft: rgba(90, 200, 115, 0.14);
+  --red: #ff6961;
+  --red-soft: rgba(255, 105, 97, 0.14);
+  --violet: #a78bfa;
+  --violet-soft: rgba(167, 139, 250, 0.14);
+}

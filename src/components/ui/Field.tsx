@@ -1,0 +1,1 @@
+export function Field({ label, hint, children }) { return <label className="field">{label && <span className="field__label">{label}</span>}{children}{hint && <span className="field__hint">{hint}</span>}</label>; }

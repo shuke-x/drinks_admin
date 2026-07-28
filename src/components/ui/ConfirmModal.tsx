@@ -1,0 +1,2 @@
+import { Button } from './Button'; import { Modal } from './Modal';
+export function ConfirmModal({ open,title,desc,confirmText='确认',danger=true,loading,onConfirm,onClose }) { return <Modal open={open} title={title} onClose={loading?undefined:onClose} width={440} footer={<><Button variant="ghost" onClick={onClose} disabled={loading}>取消</Button><Button variant={danger?'danger':'primary'} loading={loading} onClick={onConfirm}>{confirmText}</Button></>}><p className="confirm-desc">{desc}</p></Modal>; }

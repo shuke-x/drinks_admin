@@ -1,0 +1,2 @@
+import { Icon } from './Icon';
+export function Button({ variant='primary', size='md', icon, loading, disabled, className='', children, ...rest }) { return <button className={`btn btn--${variant} btn--${size} ${className}`} disabled={disabled || loading} {...rest}>{loading ? <span className="spinner spinner--btn" /> : icon ? <Icon name={icon} size={size === 'sm' ? 14 : 15} /> : null}{children}</button>; }
