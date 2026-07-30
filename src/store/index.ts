@@ -4,6 +4,7 @@ import users from './usersSlice';
 import cocktails from './cocktailsSlice';
 import system from './systemSlice';
 import toast, { pushToast } from './toastSlice';
+import categories from './categoriesSlice';
 
 /** 任何接口返回 401 时,自动清理会话并回到登录页 */
 const authErrorMiddleware = (store) => (next) => (action) => {
@@ -21,6 +22,6 @@ const authErrorMiddleware = (store) => (next) => (action) => {
 };
 
 export const store = configureStore({
-  reducer: { auth, users, cocktails, system, toast },
+  reducer: { auth, users, cocktails, categories, system, toast },
   middleware: (getDefault) => getDefault().concat(authErrorMiddleware),
 });

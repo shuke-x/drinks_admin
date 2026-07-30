@@ -2,7 +2,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { loggedOut } from '../store/authSlice';
 import { Avatar, Chip, Icon, usePermission } from '../components/ui';
-import { API_BASE, USE_MOCK } from '../api';
+import { API_BASE, USE_MOCK, api } from '../api';
 import { ShinyText } from '../components/react-bits';
 import { SideRays } from '../components/react-bits/official';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -11,6 +11,7 @@ import { useTheme } from '../theme/theme';
 const NAV = [
   { to: '/', label: '工作台', icon: 'grid', end: true },
   { to: '/cocktails', label: '酒单管理', icon: 'glass', perm: 'cocktails.read' },
+  { to: '/categories', label: '分类管理', icon: 'grid', perm: 'categories.manage' },
   { to: '/users', label: '用户管理', icon: 'users', perm: 'users.read' },
   { to: '/roles', label: '角色与权限', icon: 'shield', perm: 'roles.read' },
   { to: '/audit-logs', label: '审计日志', icon: 'scroll', perm: 'audit_logs.read' },
@@ -19,6 +20,7 @@ const NAV = [
 const TITLES = [
   { match: /^\/cocktails\/.+/, title: '酒单详情' },
   { match: /^\/cocktails/, title: '酒单管理' },
+  { match: /^\/categories/, title: '分类管理' },
   { match: /^\/users/, title: '用户管理' },
   { match: /^\/roles/, title: '角色与权限' },
   { match: /^\/audit-logs/, title: '审计日志' },
@@ -35,9 +37,13 @@ export default function AdminLayout() {
 
   const title = TITLES.find((t) => t.match.test(pathname))?.title || 'Backbar';
 
-  const logout = () => {
-    dispatch(loggedOut());
-    navigate('/login', { replace: true });
+  const logout = async () => {
+    try {
+      await api.auth.logout();
+    } finally {
+      dispatch(loggedOut());
+      navigate('/login', { replace: true });
+    }
   };
 
   return (

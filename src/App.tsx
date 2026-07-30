@@ -12,6 +12,7 @@ import CocktailDetail from './pages/CocktailDetail';
 import Users from './pages/Users';
 import Roles from './pages/Roles';
 import AuditLogs from './pages/AuditLogs';
+import Categories from './pages/Categories';
 import { Forbidden, NotFound } from './pages/Misc';
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="cocktails" element={<RequirePerm perm="cocktails.read"><Cocktails /></RequirePerm>} />
             <Route path="cocktails/:id" element={<RequirePerm perm="cocktails.read"><CocktailDetail /></RequirePerm>} />
+            <Route path="categories" element={<RequirePerm perm="categories.manage"><Categories /></RequirePerm>} />
             <Route path="users" element={<RequirePerm perm="users.read"><Users /></RequirePerm>} />
             <Route path="roles" element={<RequirePerm perm="roles.read"><Roles /></RequirePerm>} />
             <Route path="audit-logs" element={<RequirePerm perm="audit_logs.read"><AuditLogs /></RequirePerm>} />

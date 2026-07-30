@@ -11,6 +11,7 @@ import {
 } from '../components/ui';
 import { FadeContent } from '../components/react-bits';
 import { BASE_SPIRITS, REVIEW_ACTION_LABEL, STATUS_META, fmtTime } from '../utils';
+import { api } from '../api';
 
 /* ------------ 签名组件:状态轨道(对应文档 3.1 状态机) ------------ */
 
@@ -49,6 +50,7 @@ function StateRail({ status }) {
 function EditModal({ open, cocktail, acting, onSave, onClose }) {
   const [form, setForm] = useState(null);
   const [uploadError, setUploadError] = useState('');
+  const [uploading, setUploading] = useState(false);
   useEffect(() => {
     if (open && cocktail) {
       setForm({
@@ -61,23 +63,29 @@ function EditModal({ open, cocktail, acting, onSave, onClose }) {
   }, [open, cocktail]);
   if (!form) return null;
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const uploadImage = (event) => {
+  const uploadImage = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setUploadError('请选择图片格式的文件。');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setUploadError('仅支持 PNG、JPG、WebP 图片。');
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      setUploadError('图片请控制在 3 MB 以内。');
+    if (file.size > 15 * 1024 * 1024) {
+      setUploadError('图片请控制在 15 MB 以内。');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((current) => ({ ...current, imageUrl: String(reader.result || '') }));
+    setUploading(true);
+    try {
+      const result = await api.cocktail.uploadImage(file);
+      if (!result?.url) throw new Error('上传响应缺少图片 URL');
+      setForm((current) => ({ ...current, imageUrl: result.url }));
       setUploadError('');
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      setUploadError(error?.message || '图片上传失败');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
   };
   return (
     <Modal
@@ -89,6 +97,7 @@ function EditModal({ open, cocktail, acting, onSave, onClose }) {
           <Button variant="ghost" onClick={onClose} disabled={acting}>取消</Button>
           <Button
             loading={acting}
+            disabled={uploading}
             onClick={() => onSave({
               name: form.name.trim(), nameEn: form.nameEn.trim(), baseSpirit: form.baseSpirit,
               abv: form.abv === '' ? null : Number(form.abv),
@@ -117,8 +126,8 @@ function EditModal({ open, cocktail, acting, onSave, onClose }) {
         <Field label="标签(逗号分隔)"><Input value={form.tags} onChange={set('tags')} /></Field>
         <Field label="图片 URL"><Input value={form.imageUrl} onChange={set('imageUrl')} placeholder="https://…" /></Field>
       </div>
-      <Field label="上传酒单图片" hint={uploadError || '支持 PNG、JPG、WebP；单张不超过 3 MB。Mock 环境会以内嵌图片保存。'}>
-        <input className="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={uploadImage} />
+      <Field label="上传酒单图片" hint={uploadError || (uploading ? '正在上传并处理图片…' : '支持 PNG、JPG、WebP；原始图片不超过 15 MB，上传后自动压缩为 WebP。')}>
+        <input className="file-input" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={uploadImage} />
       </Field>
       {form.imageUrl && (
         <div className="image-preview">
