@@ -15,6 +15,7 @@ export const normRole = (r) => (typeof r === 'string'
 export const normUser = (u = {}) => ({
   ...u,
   nickname: u.nickname ?? u.name ?? u.email ?? '',
+  accountSource: u.accountSource ?? 'app',
   roles: asArr(u.roles).map(normRole),
 });
 

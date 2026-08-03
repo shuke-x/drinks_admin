@@ -1,17 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   approveCocktail, clearDetail, deleteCocktail, fetchCocktail,
   offlineCocktail, publishCocktail, rejectCocktail, updateCocktail,
 } from '../store/cocktailsSlice';
+import { fetchCategories } from '../store/categoriesSlice';
 import {
   AbvBadge, Button, Chip, ConfirmModal, EmptyState, Field, Icon, Input, Modal,
   ReasonModal, Select, Spinner, StatusBadge, Textarea, usePermission,
 } from '../components/ui';
 import { FadeContent } from '../components/react-bits';
-import { BASE_SPIRITS, REVIEW_ACTION_LABEL, STATUS_META, fmtTime } from '../utils';
+import { REVIEW_ACTION_LABEL, STATUS_META, fmtTime } from '../utils';
 import { api } from '../api';
+import { PERMISSION } from '../auth/permissions';
 
 /* ------------ 签名组件:状态轨道(对应文档 3.1 状态机) ------------ */
 
@@ -47,7 +49,7 @@ function StateRail({ status }) {
 
 /* ----------------------------- 编辑弹窗 --------------------------- */
 
-function EditModal({ open, cocktail, acting, onSave, onClose }) {
+function EditModal({ open, cocktail, categories, acting, onSave, onClose }) {
   const [form, setForm] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -116,7 +118,9 @@ function EditModal({ open, cocktail, acting, onSave, onClose }) {
         <Field label="英文名"><Input value={form.nameEn} onChange={set('nameEn')} /></Field>
         <Field label="基酒">
           <Select value={form.baseSpirit} onChange={set('baseSpirit')}>
-            {Object.entries(BASE_SPIRITS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {categories.map((category) => (
+              <option key={category.code} value={category.code}>{category.name}</option>
+            ))}
           </Select>
         </Field>
         <Field label="酒精度(% ABV)"><Input type="number" min="0" max="80" value={form.abv} onChange={set('abv')} /></Field>
@@ -147,12 +151,21 @@ export default function CocktailDetail() {
   const navigate = useNavigate();
   const can = usePermission();
   const { detail, acting } = useSelector((s) => s.cocktails);
+  const categories = useSelector((s) => s.categories.items);
+  const categoryNameByCode = useMemo(
+    () => Object.fromEntries(categories.map((category) => [category.code, category.name])),
+    [categories],
+  );
   const [modal, setModal] = useState(null); // approve | reject | offline | publish | edit | delete
 
   useEffect(() => {
     dispatch(fetchCocktail(id));
     return () => dispatch(clearDetail());
   }, [dispatch, id]);
+
+  useEffect(() => {
+    if (categories.length === 0) dispatch(fetchCategories());
+  }, [categories.length, dispatch]);
 
   const c = detail.data;
 
@@ -174,12 +187,12 @@ export default function CocktailDetail() {
   };
 
   const actions = [
-    c.status === 'pending' && can('cocktails.review') && { key: 'approve', label: '通过并上架', icon: 'check', variant: 'primary' },
-    c.status === 'pending' && can('cocktails.review') && { key: 'reject', label: '驳回', icon: 'x', variant: 'danger' },
-    c.status === 'published' && can('cocktails.offline') && { key: 'offline', label: '下架', icon: 'down', variant: 'danger' },
-    c.status === 'offline' && can('cocktails.publish') && { key: 'publish', label: '重新上架', icon: 'up', variant: 'primary' },
-    can('cocktails.update') && { key: 'edit', label: '运营修订', icon: 'edit', variant: 'ghost' },
-    can('cocktails.delete') && { key: 'delete', label: '删除', icon: 'trash', variant: 'ghost' },
+    c.status === 'pending' && can(PERMISSION.COCKTAILS_REVIEW) && { key: 'approve', label: '通过并上架', icon: 'check', variant: 'primary' },
+    c.status === 'pending' && can(PERMISSION.COCKTAILS_REVIEW) && { key: 'reject', label: '驳回', icon: 'x', variant: 'danger' },
+    c.status === 'published' && can(PERMISSION.COCKTAILS_OFFLINE) && { key: 'offline', label: '下架', icon: 'down', variant: 'danger' },
+    c.status === 'offline' && can(PERMISSION.COCKTAILS_PUBLISH) && { key: 'publish', label: '重新上架', icon: 'up', variant: 'primary' },
+    can(PERMISSION.COCKTAILS_UPDATE) && { key: 'edit', label: '运营修订', icon: 'edit', variant: 'ghost' },
+    can(PERMISSION.COCKTAILS_DELETE) && { key: 'delete', label: '删除', icon: 'trash', variant: 'ghost' },
   ].filter(Boolean);
 
   return (
@@ -231,7 +244,7 @@ export default function CocktailDetail() {
             <header className="card__head"><h3>基础信息</h3></header>
             <dl className="meta-grid">
               <div><dt>作者</dt><dd>{c.owner?.nickname}<span className="meta-grid__sub">{c.owner?.email}</span></dd></div>
-              <div><dt>基酒</dt><dd>{BASE_SPIRITS[c.baseSpirit] || c.baseSpirit}</dd></div>
+              <div><dt>基酒</dt><dd>{categoryNameByCode[c.baseSpirit] || c.baseSpirit || '—'}</dd></div>
               <div><dt>酒精度</dt><dd>{c.abv != null ? <AbvBadge value={c.abv} /> : '—'}</dd></div>
               <div><dt>创建时间</dt><dd>{fmtTime(c.createdAt)}</dd></div>
               <div><dt>提交审核</dt><dd>{fmtTime(c.submittedAt)}</dd></div>
@@ -251,7 +264,7 @@ export default function CocktailDetail() {
                   </Button>
                 ))}
               </div>
-              {c.status === 'pending' && !can('cocktails.review') && (
+              {c.status === 'pending' && !can(PERMISSION.COCKTAILS_REVIEW) && (
                 <p className="action-note">该酒单等待审核中,你的角色没有审核权限。</p>
               )}
             </FadeContent>
@@ -338,7 +351,7 @@ export default function CocktailDetail() {
         }}
       />
       <EditModal
-        open={modal === 'edit'} cocktail={c} acting={acting} onClose={close}
+        open={modal === 'edit'} cocktail={c} categories={categories} acting={acting} onClose={close}
         onSave={(patch) => run(updateCocktail, { id: c.id, patch })}
       />
     </div>

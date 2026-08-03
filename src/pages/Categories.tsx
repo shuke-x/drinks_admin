@@ -40,7 +40,7 @@ function CategoryModal({ category, open, acting, onClose, onSave }) {
   return (
     <Modal
       open={open}
-      title={category ? `编辑分类 · ${category.name}` : '新建酒单分类'}
+      title={category ? `编辑基酒分类 · ${category.name}` : '新建基酒分类'}
       subtitle={category ? '分类代码创建后不可修改' : '分类代码用于客户端接口与酒单关联'}
       width={620}
       onClose={acting ? undefined : onClose}
@@ -81,8 +81,8 @@ export default function Categories() {
   return (
     <div className="page">
       <div className="page-actions">
-        <p className="action-note">管理客户端可见的酒单分类、显示顺序和启用状态。</p>
-        <Button icon="plus" onClick={() => setCreating(true)}>新建分类</Button>
+        <p className="action-note">管理酒单使用的基酒分类、显示顺序和启用状态。</p>
+        <Button icon="plus" onClick={() => setCreating(true)}>新建基酒分类</Button>
       </div>
 
       {error && !loading && items.length === 0 ? (

@@ -20,6 +20,7 @@ import { roleApi } from './modules/role';
 import { auditApi } from './modules/audit';
 import { dashboardApi } from './modules/dashboard';
 import { categoryApi } from './modules/category';
+import { dailyRecommendationApi } from './modules/dailyRecommendation';
 import { mockApi } from './mockClient';
 
 export { TOKEN_KEY, REFRESH_TOKEN_KEY, API_BASE } from './request';
@@ -34,6 +35,7 @@ const realApi = {
   audit: auditApi,
   dashboard: dashboardApi,
   category: categoryApi,
+  dailyRecommendation: dailyRecommendationApi,
 };
 
 export const api = USE_MOCK ? mockApi : realApi;

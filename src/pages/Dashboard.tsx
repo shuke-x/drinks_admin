@@ -5,14 +5,15 @@ import { fetchDashboard } from '../store/systemSlice';
 import { Chip, EmptyState, Icon, Spinner, usePermission } from '../components/ui';
 import { CountUp, FadeContent, SplitText, SpotlightCard } from '../components/react-bits';
 import { AUDIT_ACTION_LABEL, BASE_SPIRITS, fmtNum, fromNow, greeting } from '../utils';
+import { PERMISSION } from '../auth/permissions';
 
 const STAT_CARDS = [
-  { key: 'pending', label: '待审核', icon: 'clock', tone: 'amber', perm: 'cocktails.read', link: '/cocktails?status=pending' },
-  { key: 'published', label: '已上架', icon: 'up', tone: 'green', perm: 'cocktails.read', link: '/cocktails?status=published' },
-  { key: 'offline', label: '已下架', icon: 'down', tone: 'violet', perm: 'cocktails.read', link: '/cocktails?status=offline' },
-  { key: 'reviewedToday', label: '今日已审', icon: 'check', tone: 'plain', perm: 'cocktails.read' },
-  { key: 'userTotal', label: '用户总数', icon: 'users', tone: 'plain', perm: 'users.read', link: '/users' },
-  { key: 'userDisabled', label: '禁用账号', icon: 'ban', tone: 'red', perm: 'users.read', link: '/users?status=disabled' },
+  { key: 'pending', label: '待审核', icon: 'clock', tone: 'amber', perm: PERMISSION.COCKTAILS_READ, link: '/cocktails?status=pending' },
+  { key: 'published', label: '已上架', icon: 'up', tone: 'green', perm: PERMISSION.COCKTAILS_READ, link: '/cocktails?status=published' },
+  { key: 'offline', label: '已下架', icon: 'down', tone: 'violet', perm: PERMISSION.COCKTAILS_READ, link: '/cocktails?status=offline' },
+  { key: 'reviewedToday', label: '今日已审', icon: 'check', tone: 'plain', perm: PERMISSION.COCKTAILS_READ },
+  { key: 'userTotal', label: '用户总数', icon: 'users', tone: 'plain', perm: PERMISSION.USERS_READ, link: '/users' },
+  { key: 'userDisabled', label: '禁用账号', icon: 'ban', tone: 'red', perm: PERMISSION.USERS_READ, link: '/users?status=disabled' },
 ];
 
 export default function Dashboard() {
@@ -34,7 +35,7 @@ export default function Dashboard() {
         </div>
         <p className="dash-hero__sub">
           这里是酒单的后厨:内容先入库,审核通过才见客。
-          {can('cocktails.review') && data?.pending > 0 && <> 队列里还有 <strong>{data.pending}</strong> 杯等你过目。</>}
+          {can(PERMISSION.COCKTAILS_REVIEW) && data?.pending > 0 && <> 队列里还有 <strong>{data.pending}</strong> 杯等你过目。</>}
         </p>
       </header>
 
@@ -55,7 +56,7 @@ export default function Dashboard() {
             ))}
           </section>
 
-          {can('cocktails.read') && data?.hotCocktails?.length > 0 && (
+          {can(PERMISSION.COCKTAILS_READ) && data?.hotCocktails?.length > 0 && (
             <FadeContent delay={90}>
               <section className="card hot-panel hot-panel--list">
                 <div className="hot-panel__info">
@@ -83,7 +84,7 @@ export default function Dashboard() {
           )}
 
           <section className="dash-cols">
-            {can('cocktails.read') && (
+            {can(PERMISSION.COCKTAILS_READ) && (
               <FadeContent delay={120} className="card dash-panel">
                 <header className="card__head">
                   <h3>审核队列<span className="card__count">{data?.pending ?? 0}</span></h3>
@@ -98,7 +99,7 @@ export default function Dashboard() {
                           <span className="queue__meta">{c.owner?.nickname} · {fromNow(c.submittedAt)}提交</span>
                         </div>
                         <Link to={`/cocktails/${c.id}`} className="btn btn--soft btn--sm">
-                          {can('cocktails.review') ? '去审核' : '查看'}
+                          {can(PERMISSION.COCKTAILS_REVIEW) ? '去审核' : '查看'}
                         </Link>
                       </li>
                     ))}
@@ -110,7 +111,7 @@ export default function Dashboard() {
             )}
 
             <FadeContent delay={180} className="card dash-panel">
-              {can('audit_logs.read') ? (
+              {can(PERMISSION.AUDIT_LOGS_READ) ? (
                 <>
                   <header className="card__head">
                     <h3>最近后台操作</h3>
@@ -136,7 +137,7 @@ export default function Dashboard() {
                       {user?.roles.map((r) => <Chip key={r.id} tone="amber">{r.name}</Chip>)}
                     </div>
                     <p className="perm-tips__note">
-                      {can('cocktails.review')
+                      {can(PERMISSION.COCKTAILS_REVIEW)
                         ? '你可以对待审酒单执行「通过 / 驳回」;用户与角色管理需要运营或超级管理员处理。'
                         : '你可以管理用户状态与已发布内容的上下架;审核通过 / 驳回由审核员执行。'}
                     </p>

@@ -1,5 +1,7 @@
 # Backbar · 酒单后台管理系统
 
+权限目录、Super 动态授权和新增受保护功能的接入流程见 [`docs/permissions.md`](docs/permissions.md)。
+
 基于《后台管理、RBAC 与酒单审核设计》文档实现的后台前端。**默认直连真实后端**:所有请求按文档 4.3 节的 REST 路径发出(`/api/v1/auth/*`、`/api/v1/admin/*`),开发环境经 Vite 代理转发。仓库内另保留一套内置 Mock,仅当 `VITE_USE_MOCK=1` 时启用,供后端不可用时离线演示(生产构建中会被完整 tree-shake 掉)。
 
 技术栈:**React 18 + Redux Toolkit + React Router 6 + Vite 5**,以及 react-bits 风格动效组件(SplitText / CountUp / SpotlightCard / Aurora / FadeContent / ShinyText / ImageTrail 的零依赖本地实现,见 `src/components/react-bits/`;reactbits.dev 的组件本身即以"复制进项目"方式分发)。

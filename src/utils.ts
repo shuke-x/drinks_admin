@@ -1,11 +1,3 @@
-/** 权限分组标签(resource -> 中文名),角色编辑器按此分组展示 */
-export const PERMISSION_GROUPS = {
-  users: '用户',
-  cocktails: '酒单',
-  roles: '权限系统',
-  audit_logs: '日志',
-};
-
 // 状态元信息(颜色 token 在 styles.css 中按 key 定义)
 export const STATUS_META = {
   draft: { label: '草稿', tone: 'draft' },
@@ -32,6 +24,7 @@ export const AUDIT_ACTION_LABEL = {
   'cocktail.approve': '审核通过', 'cocktail.reject': '审核驳回', 'cocktail.offline': '下架酒单',
   'cocktail.publish': '重新上架', 'cocktail.update': '编辑酒单', 'cocktail.delete': '删除酒单',
   'role.create': '创建角色', 'role.update': '更新角色',
+  'permissions.create': '创建权限',
 };
 
 const pad = (n) => String(n).padStart(2, '0');

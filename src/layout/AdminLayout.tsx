@@ -7,20 +7,23 @@ import { ShinyText } from '../components/react-bits';
 import { SideRays } from '../components/react-bits/official';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useTheme } from '../theme/theme';
+import { PERMISSION } from '../auth/permissions';
 
 const NAV = [
   { to: '/', label: '工作台', icon: 'grid', end: true },
-  { to: '/cocktails', label: '酒单管理', icon: 'glass', perm: 'cocktails.read' },
-  { to: '/categories', label: '分类管理', icon: 'grid', perm: 'categories.manage' },
-  { to: '/users', label: '用户管理', icon: 'users', perm: 'users.read' },
-  { to: '/roles', label: '角色与权限', icon: 'shield', perm: 'roles.read' },
-  { to: '/audit-logs', label: '审计日志', icon: 'scroll', perm: 'audit_logs.read' },
+  { to: '/cocktails', label: '酒单管理', icon: 'glass', perm: PERMISSION.COCKTAILS_READ },
+  { to: '/categories', label: '基酒分类', icon: 'grid', perm: PERMISSION.CATEGORIES_MANAGE },
+  { to: '/daily-recommendations', label: '今日推荐', icon: 'glass', perm: PERMISSION.RECOMMENDATIONS_MANAGE },
+  { to: '/users', label: '用户管理', icon: 'users', perm: PERMISSION.USERS_READ },
+  { to: '/roles', label: '角色与权限', icon: 'shield', perm: PERMISSION.ROLES_READ },
+  { to: '/audit-logs', label: '审计日志', icon: 'scroll', perm: PERMISSION.AUDIT_LOGS_READ },
 ];
 
 const TITLES = [
   { match: /^\/cocktails\/.+/, title: '酒单详情' },
   { match: /^\/cocktails/, title: '酒单管理' },
-  { match: /^\/categories/, title: '分类管理' },
+  { match: /^\/categories/, title: '基酒分类管理' },
+  { match: /^\/daily-recommendations/, title: '今日推荐 Banner' },
   { match: /^\/users/, title: '用户管理' },
   { match: /^\/roles/, title: '角色与权限' },
   { match: /^\/audit-logs/, title: '审计日志' },

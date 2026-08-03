@@ -6,6 +6,10 @@ export const fetchCategories = createAsyncThunk('categories/fetch', async (_, { 
   try { return await api.category.list(); } catch (error) { return rejectWithValue(error); }
 });
 
+export const fetchPublicCategories = createAsyncThunk('categories/fetchPublic', async (_, { rejectWithValue }) => {
+  try { return await api.category.publicList(); } catch (error) { return rejectWithValue(error); }
+});
+
 export const saveCategory = createAsyncThunk('categories/save', async ({ id, body }, { dispatch, rejectWithValue }) => {
   try {
     const result = id ? await api.category.update(id, body) : await api.category.create(body);
@@ -44,7 +48,7 @@ export const deleteCategory = createAsyncThunk('categories/delete', async ({ id,
 
 const categoriesSlice = createSlice({
   name: 'categories',
-  initialState: { items: [], loading: false, acting: false, error: null },
+  initialState: { items: [], publicItems: [], loading: false, publicLoading: false, acting: false, error: null },
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(fetchCategories.pending, (state) => { state.loading = true; state.error = null; });
@@ -53,6 +57,12 @@ const categoriesSlice = createSlice({
       state.loading = false;
       state.error = action.payload?.message || '分类加载失败';
     });
+    builder.addCase(fetchPublicCategories.pending, (state) => { state.publicLoading = true; });
+    builder.addCase(fetchPublicCategories.fulfilled, (state, action) => {
+      state.publicItems = action.payload || [];
+      state.publicLoading = false;
+    });
+    builder.addCase(fetchPublicCategories.rejected, (state) => { state.publicLoading = false; });
     for (const action of [saveCategory, setCategoryActive, deleteCategory]) {
       builder.addCase(action.pending, (state) => { state.acting = true; });
       builder.addCase(action.fulfilled, (state) => { state.acting = false; });

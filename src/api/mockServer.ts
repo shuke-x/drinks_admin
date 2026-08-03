@@ -98,7 +98,8 @@ const roleView = (role) => ({
 });
 
 const userView = (u) => ({
-  id: u.id, email: u.email, nickname: u.nickname, status: u.status,
+  id: u.id, email: u.email, nickname: u.nickname, accountSource: u.accountSource,
+  status: u.status,
   disabledAt: u.disabledAt, disabledReason: u.disabledReason, createdAt: u.createdAt,
   roles: rolesOf(u.id).map((r) => ({ id: r.id, code: r.code, name: r.name })),
   cocktailCount: db.cocktails.filter((c) => c.ownerId === u.id && !c.deletedAt).length,
@@ -143,13 +144,42 @@ export async function getMe(token) {
 
 // ------------------------------ 用户 -----------------------------
 
+// POST /admin/users
+export async function createUser(token, { email, name, password, roleIds = [] } = {}) {
+  await sleep();
+  const actor = auth(token);
+  requirePerms(actor, 'users.create');
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) err(400, '请输入有效邮箱');
+  if (!name?.trim()) err(400, '请输入用户昵称');
+  if (!/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,}$/.test(password || ''))
+    err(400, '密码至少 8 位，且包含大小写字母、数字和符号');
+  if (db.users.some((user) => user.email === normalizedEmail)) err(409, '该邮箱已注册');
+  const nextRoles = [...new Set(roleIds)].map((roleId) =>
+    db.roles.find((role) => role.id === roleId) || err(400, `角色 ${roleId} 不存在`));
+  const user = {
+    id: uid('u'), email: normalizedEmail, nickname: name.trim(), accountSource: 'admin', status: 'active',
+    disabledAt: null, disabledReason: null, createdAt: now(),
+  };
+  db.users.push(user);
+  db.accounts[normalizedEmail] = { password, userId: user.id };
+  nextRoles.forEach((role) => db.userRoles.push({
+    userId: user.id, roleId: role.id, assignedBy: actor.id, createdAt: now(),
+  }));
+  audit(actor, 'users.create', 'user', user.id, null, {
+    email: user.email, nickname: user.nickname, roleIds: nextRoles.map((role) => role.id),
+  });
+  return { user: userView(user) };
+}
+
 // GET /admin/users
-export async function listUsers(token, { page, pageSize, status, keyword } = {}) {
+export async function listUsers(token, { page, pageSize, status, accountSource, keyword } = {}) {
   await sleep();
   const actor = auth(token);
   requirePerms(actor, 'users.read');
   let rows = [...db.users];
   if (status) rows = rows.filter((u) => u.status === status);
+  if (accountSource) rows = rows.filter((u) => u.accountSource === accountSource);
   if (keyword) {
     const k = keyword.trim().toLowerCase();
     rows = rows.filter((u) => u.email.toLowerCase().includes(k) || u.nickname.toLowerCase().includes(k));
@@ -227,6 +257,30 @@ export async function setUserRoles(token, id, { roleIds } = {}) {
   nextRoles.forEach((r) => db.userRoles.push({ userId: target.id, roleId: r.id, assignedBy: actor.id, createdAt: now() }));
   audit(actor, 'user.assign_roles', 'user', target.id, before, { roles: nextRoles.map((r) => r.code) });
   return { user: userView(target) };
+}
+
+// DELETE /admin/users/:id
+export async function deleteUser(token, id) {
+  await sleep();
+  const actor = auth(token);
+  requirePerms(actor, 'users.delete');
+  if (!rolesOf(actor.id).some((role) => role.code === 'super_admin'))
+    err(403, '仅超级管理员可以删除用户');
+  if (actor.id === id) err(400, '不能删除当前登录账号');
+  const index = db.users.findIndex((user) => user.id === id);
+  if (index < 0) err(404, '用户不存在');
+  const target = db.users[index];
+  const targetRoles = rolesOf(id);
+  if (targetRoles.some((role) => role.code === 'super_admin') &&
+      db.users.filter((user) => rolesOf(user.id).some((role) => role.code === 'super_admin')).length <= 1)
+    err(400, '不能删除最后一名超级管理员');
+  audit(actor, 'users.delete', 'user', id, {
+    email: target.email, nickname: target.nickname, roleIds: targetRoles.map((role) => role.id),
+  }, null);
+  db.userRoles = db.userRoles.filter((item) => item.userId !== id);
+  delete db.accounts[target.email];
+  db.users.splice(index, 1);
+  return { id };
 }
 
 // ------------------------------ 酒单 -----------------------------
@@ -401,6 +455,31 @@ export async function listRoles(token) {
 }
 
 const ROLE_CODE_RE = /^[a-z][a-z0-9_]{2,29}$/;
+const PERMISSION_CODE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
+
+// POST /admin/permissions
+export async function createPermission(token, { code, name } = {}) {
+  await sleep();
+  const actor = auth(token);
+  requirePerms(actor, 'roles.manage');
+  const normalizedCode = (code || '').trim();
+  if (!PERMISSION_CODE_RE.test(normalizedCode)) err(400, '权限码必须使用 resource.action 格式');
+  if (!name || !name.trim()) err(400, '权限名称不能为空');
+  if (db.permissions.some((permission) => permission.code === normalizedCode))
+    err(409, `权限 ${normalizedCode} 已存在`);
+
+  const permission = {
+    id: normalizedCode,
+    code: normalizedCode,
+    name: name.trim(),
+    group: normalizedCode.split('.')[0],
+  };
+  db.permissions.push(permission);
+  const superAdmin = db.roles.find((role) => role.code === 'super_admin');
+  if (superAdmin) db.rolePermissions.push({ roleId: superAdmin.id, permissionId: permission.id });
+  audit(actor, 'permissions.create', 'permission', permission.id, null, permission);
+  return permission;
+}
 
 // POST /admin/roles
 export async function createRole(token, { code, name, description, permissionIds } = {}) {

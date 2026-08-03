@@ -15,7 +15,12 @@ let mockCategories = [
   { id: 'category_rum', code: 'rum', name: '朗姆酒', nameEn: 'Rum', description: '以朗姆酒为主要基酒', iconUrl: null, sortOrder: 30, isActive: true },
 ];
 
+const mockDailyRecommendations = new Map();
+
 const mockCategoryApi = {
+  publicList: async () => mockCategories
+    .filter((item) => item.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder),
   list: async () => [...mockCategories].sort((a, b) => a.sortOrder - b.sortOrder),
   create: async (body) => {
     if (mockCategories.some((item) => item.code === body.code))
@@ -53,10 +58,12 @@ export const mockApi = {
     me: () => call(() => server.getMe(token())),                                  // GET   /auth/me
   },
   user: {
+    create: (body) => call(() => server.createUser(token(), body)),               // POST  /admin/users
     list: (params) => call(() => server.listUsers(token(), params)),              // GET   /admin/users
     detail: (id) => call(() => server.getUser(token(), id)),                      // GET   /admin/users/:id
     updateStatus: (id, body) => call(() => server.updateUserStatus(token(), id, body)), // PATCH /admin/users/:id/status
     setRoles: (id, body) => call(() => server.setUserRoles(token(), id, body)),   // PUT   /admin/users/:id/roles
+    remove: (id) => call(() => server.deleteUser(token(), id)),                   // DELETE /admin/users/:id
   },
   cocktail: {
     list: (params) => call(() => server.listCocktails(token(), params)),          // GET   /admin/cocktails
@@ -72,6 +79,7 @@ export const mockApi = {
   },
   role: {
     list: () => call(() => server.listRoles(token())),                            // GET   /admin/roles
+    createPermission: (body) => call(() => server.createPermission(token(), body)), // POST /admin/permissions
     create: (body) => call(() => server.createRole(token(), body)),               // POST  /admin/roles
     update: (id, body) => call(() => server.updateRole(token(), id, body)),       // PATCH /admin/roles/:id
   },
@@ -82,4 +90,13 @@ export const mockApi = {
     overview: () => call(() => server.getDashboard(token())),                     // GET   /admin/dashboard
   },
   category: mockCategoryApi,
+  dailyRecommendation: {
+    get: async (date) => ({ date, items: (mockDailyRecommendations.get(date) || []).map((cocktail) => ({ cocktail })) }),
+    replace: async (date, cocktailIds) => {
+      const cocktails = (await server.listCocktails(token(), { page: 1, pageSize: 50, status: 'published' })).items
+        .filter((cocktail) => cocktailIds.includes(cocktail.id));
+      mockDailyRecommendations.set(date, cocktailIds.map((id) => cocktails.find((cocktail) => cocktail.id === id)).filter(Boolean));
+      return { date, items: mockDailyRecommendations.get(date) };
+    },
+  },
 };

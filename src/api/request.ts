@@ -13,6 +13,30 @@ export const REFRESH_TOKEN_KEY = 'backbar_refresh_token';
 /** 请求前缀。后端若无 /api/v1 前缀或需要绝对地址,在 .env 里改 VITE_API_BASE */
 export const API_BASE = (import.meta.env.VITE_API_BASE || '/api/v1').replace(/\/+$/, '');
 
+const envTimeout = Number(import.meta.env.VITE_API_TIMEOUT_MS);
+export const API_TIMEOUT_MS = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 20_000;
+const UPLOAD_TIMEOUT_MS = Math.max(API_TIMEOUT_MS, 120_000);
+
+const timeoutError = (timeoutMs) => ({
+  status: 0,
+  code: 'REQUEST_TIMEOUT',
+  message: `请求超时（${Math.ceil(timeoutMs / 1000)} 秒），请检查网络后重试`,
+});
+
+/** 保证所有请求最终成功或失败，避免 fetch 长时间挂起导致页面一直 loading。 */
+const fetchWithTimeout = async (url, options = {}, timeoutMs = API_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw timeoutError(timeoutMs);
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+};
+
 const token = () => localStorage.getItem(TOKEN_KEY) || '';
 
 const unwrap = (payload) => {
@@ -58,7 +82,7 @@ const refreshAccessToken = async () => {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   if (!refreshToken) throw { status: 401, message: '登录已过期，请重新登录' };
   if (!refreshPromise) {
-    refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
+    refreshPromise = fetchWithTimeout(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -94,7 +118,7 @@ const qs = (params = {}) => {
 async function send(method, path, { params, body } = {}, retried = false) {
   let res;
   try {
-    res = await fetch(`${API_BASE}${path}${qs(params)}`, {
+    res = await fetchWithTimeout(`${API_BASE}${path}${qs(params)}`, {
       method,
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -102,7 +126,8 @@ async function send(method, path, { params, body } = {}, retried = false) {
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch {
+  } catch (error) {
+    if (error?.code === 'REQUEST_TIMEOUT') throw error;
     throw { status: 0, message: `无法连接后端(${API_BASE}),请确认服务已启动、代理配置正确` };
   }
 
@@ -127,7 +152,17 @@ export const request = {
   patch: (path, body) => send('PATCH', path, { body }),
   delete: (path, body) => send('DELETE', path, { body }),
   postForm: async function postForm(path, formData, retried = false) {
-    const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body: formData });
+    let res;
+    try {
+      res = await fetchWithTimeout(
+        `${API_BASE}${path}`,
+        { method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body: formData },
+        UPLOAD_TIMEOUT_MS,
+      );
+    } catch (error) {
+      if (error?.code === 'REQUEST_TIMEOUT') throw error;
+      throw { status: 0, message: `无法连接后端(${API_BASE}),请确认网络与服务状态` };
+    }
     if (res.status === 401 && !retried) {
       await refreshAccessToken();
       return postForm(path, formData, true);

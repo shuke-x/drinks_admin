@@ -5,12 +5,19 @@ import { request } from '../request';
 import { asArr, EMPTY_STATS, normCocktail, normList, normUser } from '../normalize';
 
 export const userApi = {
+  /** POST /admin/users —— 管理员直接创建账号并可分配初始角色 */
+  async create(body) {
+    const raw = await request.post('/admin/users', body);
+    return { user: normUser(raw?.user ?? raw ?? {}) };
+  },
+
   /** GET /admin/users —— 支持 page / pageSize / status / keyword */
   async list(params = {}) {
     const query = {
       page: params.page,
       limit: params.pageSize,
       status: params.status,
+      accountSource: params.accountSource,
       search: params.keyword,
     };
     const pg = normList(await request.get('/admin/users', query), params.page, params.pageSize);
@@ -38,4 +45,7 @@ export const userApi = {
     const raw = await request.put(`/admin/users/${id}/roles`, body);
     return { user: normUser(raw?.user ?? raw ?? {}) };
   },
+
+  /** DELETE /admin/users/:id —— 仅超级管理员 */
+  remove: (id) => request.delete(`/admin/users/${id}`),
 };

@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createImportJob, fetchCocktails, setQuery } from '../store/cocktailsSlice';
+import { fetchCategories } from '../store/categoriesSlice';
 import { Button, Icon, Input, Pagination, Select, StatusBadge, TableShell, usePermission } from '../components/ui';
-import { BASE_SPIRITS, STATUS_META, fmtTime, fromNow } from '../utils';
+import { STATUS_META, fmtTime, fromNow } from '../utils';
+import { PERMISSION } from '../auth/permissions';
 
 const STATUS_PILLS = ['', 'pending', 'published', 'offline', 'rejected', 'draft'];
 
@@ -11,6 +13,11 @@ export default function Cocktails() {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const { query, list } = useSelector((s) => s.cocktails);
+  const categories = useSelector((s) => s.categories.items);
+  const categoryNameByCode = useMemo(
+    () => Object.fromEntries(categories.map((category) => [category.code, category.name])),
+    [categories],
+  );
   const importInputRef = useRef(null);
   const can = usePermission();
 
@@ -24,6 +31,9 @@ export default function Cocktails() {
   }, []);
 
   useEffect(() => { dispatch(fetchCocktails()); }, [dispatch, query]);
+  useEffect(() => {
+    if (categories.length === 0) dispatch(fetchCategories());
+  }, [categories.length, dispatch]);
 
   const update = (patch) => {
     dispatch(setQuery(patch));
@@ -57,7 +67,7 @@ export default function Cocktails() {
           ))}
         </div>
         <div className="filter-bar__right">
-          {can('imports.manage') && <>
+          {can(PERMISSION.IMPORTS_MANAGE) && <>
             <input ref={importInputRef} className="file-input file-input--hidden" type="file" accept=".json,.xlsx,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={importFile} />
             <Button variant="ghost" size="sm" onClick={() => importInputRef.current?.click()}>
               <Icon name="up" size={14} />导入 Excel / JSON
@@ -65,7 +75,9 @@ export default function Cocktails() {
           </>}
           <Select value={query.baseSpirit} onChange={(e) => update({ baseSpirit: e.target.value })}>
             <option value="">全部基酒</option>
-            {Object.entries(BASE_SPIRITS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {categories.map((category) => (
+              <option key={category.code} value={category.code}>{category.name}</option>
+            ))}
           </Select>
           <div className="search-box">
             <Icon name="search" size={14} />
@@ -99,7 +111,7 @@ export default function Cocktails() {
                   {c.nameEn && <span className="cell-sub">{c.nameEn}</span>}
                 </td>
                 <td>{c.owner?.nickname || '—'}</td>
-                <td>{BASE_SPIRITS[c.baseSpirit] || c.baseSpirit}</td>
+                <td>{categoryNameByCode[c.baseSpirit] || c.baseSpirit || '—'}</td>
                 <td><StatusBadge status={c.status} /></td>
                 <td title={fmtTime(c.submittedAt)}>{c.submittedAt ? fromNow(c.submittedAt) : '—'}</td>
                 <td title={fmtTime(c.updatedAt)}>{fromNow(c.updatedAt)}</td>

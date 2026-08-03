@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '../api';
 import { notify } from './toastSlice';
+import { restoreSession } from './authSlice';
 
 export const fetchRoles = createAsyncThunk('system/fetchRoles', async (_, { rejectWithValue }) => {
   try { return await api.role.list(); } catch (e) { return rejectWithValue(e); }
@@ -14,6 +15,18 @@ export const saveRole = createAsyncThunk('system/saveRole', async ({ id, body },
     return res;
   } catch (e) {
     dispatch(notify('error', e.message || '保存失败'));
+    return rejectWithValue(e);
+  }
+});
+
+export const createPermission = createAsyncThunk('system/createPermission', async (body, { dispatch, rejectWithValue }) => {
+  try {
+    const result = await api.role.createPermission(body);
+    dispatch(notify('success', `权限「${body.name}」已创建`));
+    await Promise.all([dispatch(fetchRoles()), dispatch(restoreSession())]);
+    return result;
+  } catch (e) {
+    dispatch(notify('error', e.message || '权限创建失败'));
     return rejectWithValue(e);
   }
 });
@@ -32,6 +45,7 @@ const systemSlice = createSlice({
   initialState: {
     roles: { items: [], permissions: [], loading: false },
     savingRole: false,
+    savingPermission: false,
     auditQuery: { page: 1, pageSize: 10, targetType: '', action: '' },
     audit: { items: [], total: 0, loading: false },
     dashboard: { data: null, loading: false },
@@ -51,6 +65,10 @@ const systemSlice = createSlice({
     b.addCase(saveRole.pending, (s) => { s.savingRole = true; });
     b.addCase(saveRole.fulfilled, (s) => { s.savingRole = false; });
     b.addCase(saveRole.rejected, (s) => { s.savingRole = false; });
+
+    b.addCase(createPermission.pending, (s) => { s.savingPermission = true; });
+    b.addCase(createPermission.fulfilled, (s) => { s.savingPermission = false; });
+    b.addCase(createPermission.rejected, (s) => { s.savingPermission = false; });
 
     b.addCase(fetchAuditLogs.pending, (s) => { s.audit.loading = true; });
     b.addCase(fetchAuditLogs.fulfilled, (s, a) => {

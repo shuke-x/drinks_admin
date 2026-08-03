@@ -14,6 +14,36 @@ export const fetchUser = createAsyncThunk('users/fetchOne', async (id, { rejectW
   } catch (e) { return rejectWithValue(e); }
 });
 
+export const createUser = createAsyncThunk(
+  'users/create',
+  async (body, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await api.user.create(body);
+      dispatch(notify('success', `账号「${body.name}」已创建`));
+      dispatch(fetchUsers());
+      return res;
+    } catch (e) {
+      dispatch(notify('error', e.message || '新增用户失败'));
+      return rejectWithValue(e);
+    }
+  },
+);
+
+export const deleteUser = createAsyncThunk(
+  'users/delete',
+  async (id, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await api.user.remove(id);
+      dispatch(notify('success', '用户已删除'));
+      dispatch(fetchUsers());
+      return res;
+    } catch (e) {
+      dispatch(notify('error', e.message || '删除用户失败'));
+      return rejectWithValue(e);
+    }
+  },
+);
+
 export const changeUserStatus = createAsyncThunk(
   'users/changeStatus',
   async ({ id, status, reason }, { dispatch, rejectWithValue }) => {
@@ -46,7 +76,7 @@ export const saveUserRoles = createAsyncThunk(
   },
 );
 
-const initialQuery = { page: 1, pageSize: 8, status: '', keyword: '' };
+const initialQuery = { page: 1, pageSize: 8, status: '', accountSource: '', keyword: '' };
 
 const usersSlice = createSlice({
   name: 'users',
@@ -71,7 +101,7 @@ const usersSlice = createSlice({
     b.addCase(fetchUser.fulfilled, (s, a) => { s.detail = { data: a.payload, loading: false }; });
     b.addCase(fetchUser.rejected, (s) => { s.detail.loading = false; });
 
-    for (const t of [changeUserStatus, saveUserRoles]) {
+    for (const t of [createUser, deleteUser, changeUserStatus, saveUserRoles]) {
       b.addCase(t.pending, (s) => { s.acting = true; });
       b.addCase(t.fulfilled, (s) => { s.acting = false; });
       b.addCase(t.rejected, (s) => { s.acting = false; });

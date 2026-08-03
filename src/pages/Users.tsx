@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useSearchParams } from 'react-router-dom';
-import { changeUserStatus, clearDetail, fetchUser, fetchUsers, saveUserRoles, setQuery } from '../store/usersSlice';
+import { changeUserStatus, clearDetail, deleteUser, fetchUser, fetchUsers, saveUserRoles, setQuery } from '../store/usersSlice';
 import { fetchRoles } from '../store/systemSlice';
 import {
-  Avatar, Button, Chip, Drawer, Icon, Input, Pagination, ReasonModal,
+  Avatar, Button, Chip, ConfirmModal, Drawer, Icon, Input, Pagination, ReasonModal, Select,
   Spinner, StatusBadge, TableShell, UserStatusBadge, usePermission,
 } from '../components/ui';
 import { fmtTime, fromNow } from '../utils';
+import { PERMISSION } from '../auth/permissions';
+import { CreateUserModal } from '../components/users/CreateUserModal';
 
 function UserDrawer({ userId, onClose }) {
   const dispatch = useDispatch();
@@ -21,7 +23,7 @@ function UserDrawer({ userId, onClose }) {
   useEffect(() => {
     if (userId) {
       dispatch(fetchUser(userId));
-      if (can('users.assign_roles') && roleOptions.length === 0) dispatch(fetchRoles());
+      if (can(PERMISSION.USERS_ASSIGN_ROLES) && roleOptions.length === 0) dispatch(fetchRoles());
     }
     return () => { dispatch(clearDetail()); setRoleIds(null); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,7 +58,9 @@ function UserDrawer({ userId, onClose }) {
                 <UserStatusBadge status={user.status} />
                 {user.roles.map((r) => <Chip key={r.id} tone="amber">{r.name}</Chip>)}
               </div>
-              <p className="user-detail__meta">注册于 {fmtTime(user.createdAt)}</p>
+              <p className="user-detail__meta">
+                {user.accountSource === 'admin' ? '后台创建' : 'App 注册'} · {fmtTime(user.createdAt)}
+              </p>
             </div>
           </div>
 
@@ -97,7 +101,7 @@ function UserDrawer({ userId, onClose }) {
             </section>
           )}
 
-          {can('users.assign_roles') && roleIds && (
+          {can(PERMISSION.USERS_ASSIGN_ROLES) && roleIds && (
             <section className="user-detail__section">
               <h4>角色分配<span className="section-note">替换整套角色集合(PUT)</span></h4>
               <div className="role-checks">
@@ -121,7 +125,7 @@ function UserDrawer({ userId, onClose }) {
             </section>
           )}
 
-          {can('users.update_status') && (
+          {can(PERMISSION.USERS_UPDATE_STATUS) && (
             <section className="user-detail__section user-detail__danger">
               <h4>账号状态</h4>
               {user.status === 'active' ? (
@@ -168,8 +172,13 @@ function UserDrawer({ userId, onClose }) {
 export default function Users() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
-  const { query, list } = useSelector((s) => s.users);
+  const { query, list, acting } = useSelector((s) => s.users);
+  const me = useSelector((s) => s.auth.user);
+  const can = usePermission();
   const [activeId, setActiveId] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const isSuperAdmin = me?.roles?.some((role) => role.code === 'super_admin');
 
   useEffect(() => {
     const status = searchParams.get('status');
@@ -192,12 +201,26 @@ export default function Users() {
             </button>
           ))}
         </div>
-        <div className="search-box">
-          <Icon name="search" size={14} />
-          <Input
-            placeholder="搜索昵称 / 邮箱…" value={query.keyword}
-            onChange={(e) => dispatch(setQuery({ keyword: e.target.value }))}
-          />
+        <div className="filter-bar__right">
+          <Select
+            aria-label="账号来源"
+            value={query.accountSource}
+            onChange={(e) => dispatch(setQuery({ accountSource: e.target.value }))}
+          >
+            <option value="">全部来源</option>
+            <option value="app">App 注册</option>
+            <option value="admin">后台创建</option>
+          </Select>
+          <div className="search-box">
+            <Icon name="search" size={14} />
+            <Input
+              placeholder="搜索昵称 / 邮箱…" value={query.keyword}
+              onChange={(e) => dispatch(setQuery({ keyword: e.target.value }))}
+            />
+          </div>
+          {can(PERMISSION.USERS_CREATE) && (
+            <Button icon="plus" onClick={() => setCreating(true)}>新增用户</Button>
+          )}
         </div>
       </div>
 
@@ -208,7 +231,7 @@ export default function Users() {
       >
         <table className="table">
           <thead>
-            <tr><th>用户</th><th>角色</th><th>状态</th><th>酒单数</th><th>注册时间</th><th aria-label="操作" /></tr>
+            <tr><th>用户</th><th>来源</th><th>角色</th><th>状态</th><th>酒单数</th><th>注册时间</th><th aria-label="操作" /></tr>
           </thead>
           <tbody>
             {list.items.map((u) => (
@@ -222,12 +245,16 @@ export default function Users() {
                     </div>
                   </div>
                 </td>
+                <td><Chip tone={u.accountSource === 'admin' ? 'amber' : 'default'}>{u.accountSource === 'admin' ? '后台创建' : 'App 注册'}</Chip></td>
                 <td><span className="chips">{u.roles.map((r) => <Chip key={r.id} tone={r.code === 'user' ? 'default' : 'amber'}>{r.name}</Chip>)}</span></td>
                 <td><UserStatusBadge status={u.status} /></td>
                 <td>{u.cocktailCount}</td>
                 <td>{fmtTime(u.createdAt).slice(0, 10)}</td>
                 <td className="cell-actions">
                   <Button variant="ghost" size="sm" onClick={() => setActiveId(u.id)}>详情</Button>
+                  {isSuperAdmin && can(PERMISSION.USERS_DELETE) && u.id !== me?.id && (
+                    <Button variant="danger" size="sm" icon="trash" onClick={() => setDeleting(u)}>删除</Button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -241,6 +268,22 @@ export default function Users() {
       />
 
       <UserDrawer userId={activeId} onClose={() => setActiveId(null)} />
+      <CreateUserModal open={creating} onClose={() => setCreating(false)} />
+      <ConfirmModal
+        open={Boolean(deleting)}
+        title={`删除用户 ${deleting?.nickname || ''}`}
+        desc="该操作会删除账号、私密酒单和账号资源，公开酒单会保留但不再显示作者。此操作不可撤销。"
+        confirmText="确认删除"
+        loading={acting}
+        onClose={() => setDeleting(null)}
+        onConfirm={async () => {
+          const result = await dispatch(deleteUser(deleting.id));
+          if (!result.error) {
+            if (activeId === deleting.id) setActiveId(null);
+            setDeleting(null);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -12,26 +12,9 @@ const ago = (days, hours = 0) =>
 
 // ---------------------------- permissions ------------------------
 
-export { PERMISSION_GROUPS } from '../utils';
+import { MOCK_PERMISSION_CATALOG, PERMISSION } from '../auth/permissions';
 
-const P = (code, name) => ({ id: code, code, name, group: code.split('.')[0] });
-
-export const permissions = [
-  P('users.read', '查看用户'),
-  P('users.update_status', '启用 / 禁用用户'),
-  P('users.assign_roles', '分配角色'),
-  P('cocktails.read', '查看酒单'),
-  P('cocktails.update', '编辑酒单'),
-  P('cocktails.delete', '删除酒单'),
-  P('cocktails.publish', '重新上架'),
-  P('cocktails.offline', '下架酒单'),
-  P('cocktails.review', '审核酒单(通过 / 驳回)'),
-  P('roles.read', '查看角色'),
-  P('roles.manage', '管理角色'),
-  P('audit_logs.read', '查看审计日志'),
-  P('imports.manage', '导入酒单数据'),
-  P('categories.manage', '管理酒单分类'),
-];
+export const permissions = MOCK_PERMISSION_CATALOG.map((item) => ({ ...item }));
 
 // ------------------------------ roles ----------------------------
 
@@ -46,24 +29,26 @@ export const rolePermissions = [
   // super_admin: 全部
   ...permissions.map((p) => ({ roleId: 'r_super', permissionId: p.id })),
   // operator
-  ...['users.read', 'users.update_status', 'cocktails.read', 'cocktails.update', 'cocktails.delete', 'cocktails.publish', 'cocktails.offline']
+  ...[PERMISSION.USERS_READ, PERMISSION.USERS_UPDATE_STATUS, PERMISSION.COCKTAILS_READ,
+    PERMISSION.COCKTAILS_UPDATE, PERMISSION.COCKTAILS_DELETE, PERMISSION.COCKTAILS_PUBLISH,
+    PERMISSION.COCKTAILS_OFFLINE, PERMISSION.RECOMMENDATIONS_MANAGE]
     .map((c) => ({ roleId: 'r_operator', permissionId: c })),
   // reviewer
-  ...['cocktails.read', 'cocktails.review'].map((c) => ({ roleId: 'r_reviewer', permissionId: c })),
+  ...[PERMISSION.COCKTAILS_READ, PERMISSION.COCKTAILS_REVIEW].map((c) => ({ roleId: 'r_reviewer', permissionId: c })),
 ];
 
 // ------------------------------ users ----------------------------
 // 仅前三个账号可登录后台(见 accounts)。
 
 export const users = [
-  { id: 'u_admin', email: 'admin@bar.dev', nickname: '老白', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(120) },
-  { id: 'u_op', email: 'operator@bar.dev', nickname: '阿慧', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(96) },
-  { id: 'u_rev', email: 'reviewer@bar.dev', nickname: '严选', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(96) },
-  { id: 'u1', email: 'momo@drinks.cn', nickname: 'Momo', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(80) },
-  { id: 'u2', email: 'lee@drinks.cn', nickname: '小李', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(72) },
-  { id: 'u3', email: 'chacha@drinks.cn', nickname: '茶茶', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(61) },
-  { id: 'u4', email: 'spam@bot.cn', nickname: '灌水机器人', status: 'disabled', disabledAt: ago(9), disabledReason: '批量提交低质内容,多次警告无效', createdAt: ago(30) },
-  { id: 'u5', email: 'nana@drinks.cn', nickname: '娜娜', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(22) },
+  { id: 'u_admin', email: 'admin@bar.dev', nickname: '老白', accountSource: 'admin', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(120) },
+  { id: 'u_op', email: 'operator@bar.dev', nickname: '阿慧', accountSource: 'admin', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(96) },
+  { id: 'u_rev', email: 'reviewer@bar.dev', nickname: '严选', accountSource: 'admin', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(96) },
+  { id: 'u1', email: 'momo@drinks.cn', nickname: 'Momo', accountSource: 'app', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(80) },
+  { id: 'u2', email: 'lee@drinks.cn', nickname: '小李', accountSource: 'app', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(72) },
+  { id: 'u3', email: 'chacha@drinks.cn', nickname: '茶茶', accountSource: 'app', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(61) },
+  { id: 'u4', email: 'spam@bot.cn', nickname: '灌水机器人', accountSource: 'app', status: 'disabled', disabledAt: ago(9), disabledReason: '批量提交低质内容,多次警告无效', createdAt: ago(30) },
+  { id: 'u5', email: 'nana@drinks.cn', nickname: '娜娜', accountSource: 'app', status: 'active', disabledAt: null, disabledReason: null, createdAt: ago(22) },
 ];
 
 /** 后台可登录账号(mock 密码校验只针对这三个) */
