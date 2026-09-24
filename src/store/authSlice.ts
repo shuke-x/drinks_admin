@@ -1,72 +1,79 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { api, REFRESH_TOKEN_KEY, TOKEN_KEY } from '../api';
+import { createSlice } from '@reduxjs/toolkit';
+import { api } from '../api';
+import { clearSession,cookieSession,getAccessToken,sessionGeneration } from '../api/session';
+import type { LoginDto,UserDto } from '../api/types';
+import { apiError } from '../api/types';
+import { createAppAsyncThunk as createAsyncThunk } from './thunk';
 import { notify } from './toastSlice';
 
-export const loginThunk = createAsyncThunk('auth/login', async (body, { dispatch, rejectWithValue }) => {
+export const loginThunk = createAsyncThunk('auth/login', async (body: LoginDto, { dispatch, rejectWithValue }) => {
   try {
     const res = await api.auth.login(body);
-    localStorage.setItem(TOKEN_KEY, res.token);
-    if (res.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
     dispatch(notify('success', `欢迎回来,${res.user.nickname}`));
-    return res;
-  } catch (e) {
+    return { user: res.user, permissions: res.permissions };
+  } catch (caught) { const e = apiError(caught);
     return rejectWithValue(e);
   }
 });
 
 export const restoreSession = createAsyncThunk('auth/restore', async (_, { rejectWithValue }) => {
-  if (!localStorage.getItem(TOKEN_KEY)) return rejectWithValue({ silent: true });
+  const generation = sessionGeneration();
+  if (!cookieSession && !getAccessToken()) return rejectWithValue({ message: '', silent: true });
   try {
     return await api.auth.me();
-  } catch (e) {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  } catch (caught) { const e = apiError(caught);
+    if (generation === sessionGeneration()) clearSession();
     return rejectWithValue(e);
   }
 });
 
-const initialToken = localStorage.getItem(TOKEN_KEY);
-
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    token: initialToken,
-    user: null,
-    permissions: [],
-    status: initialToken ? 'restoring' : 'idle', // idle | restoring | ready
+    user: null as UserDto | null,
+    permissions: [] as string[],
+    status: 'restoring', // idle | restoring | ready
     loggingIn: false,
-    error: null,
+    activeRequestId: null as string | null,
+    error: null as string | null,
   },
   reducers: {
     loggedOut(state) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      state.token = null;
+      clearSession();
       state.user = null;
       state.permissions = [];
       state.status = 'idle';
+      state.activeRequestId = null;
+      state.loggingIn = false;
     },
   },
   extraReducers: (b) => {
-    b.addCase(loginThunk.pending, (s) => { s.loggingIn = true; s.error = null; });
+    b.addCase(loginThunk.pending, (s, a) => { s.loggingIn = true; s.error = null; s.activeRequestId = a.meta.requestId; });
+    b.addCase(restoreSession.pending, (s, a) => { s.activeRequestId = a.meta.requestId; });
     b.addCase(loginThunk.fulfilled, (s, a) => {
+      if (s.activeRequestId !== a.meta.requestId) return;
+      s.activeRequestId = null;
       s.loggingIn = false;
-      s.token = a.payload.token;
       s.user = a.payload.user;
       s.permissions = a.payload.permissions;
       s.status = 'ready';
     });
     b.addCase(loginThunk.rejected, (s, a) => {
+      if (s.activeRequestId !== a.meta.requestId) return;
+      s.activeRequestId = null;
       s.loggingIn = false;
       s.error = a.payload?.message || '登录失败';
     });
     b.addCase(restoreSession.fulfilled, (s, a) => {
+      if (s.activeRequestId !== a.meta.requestId) return;
+      s.activeRequestId = null;
       s.user = a.payload.user;
       s.permissions = a.payload.permissions;
       s.status = 'ready';
     });
-    b.addCase(restoreSession.rejected, (s) => {
-      s.token = null;
+    b.addCase(restoreSession.rejected, (s, a) => {
+      if (s.activeRequestId !== a.meta.requestId) return;
+      s.activeRequestId = null;
       s.user = null;
       s.permissions = [];
       s.status = 'idle';

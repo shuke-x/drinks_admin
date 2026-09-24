@@ -1,15 +1,16 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit';
+import { createSlice,nanoid,type PayloadAction } from '@reduxjs/toolkit';
+export interface Toast { id: string; type: string; message: string }
 
 const toastSlice = createSlice({
   name: 'toast',
-  initialState: { items: [] },
+  initialState: { items: [] as Toast[] },
   reducers: {
     pushToast: {
-      reducer(state, action) {
+      reducer(state, action: PayloadAction<Toast>) {
         state.items.push(action.payload);
         if (state.items.length > 4) state.items.shift();
       },
-      prepare({ type = 'info', message }) {
+      prepare({ type = 'info', message }: { type?: string; message: string }) {
         return { payload: { id: nanoid(), type, message } };
       },
     },
@@ -20,5 +21,5 @@ const toastSlice = createSlice({
 });
 
 export const { pushToast, removeToast } = toastSlice.actions;
-export const notify = (type, message) => pushToast({ type, message });
+export const notify = (type: string, message: string) => pushToast({ type, message });
 export default toastSlice.reducer;

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useCallback,useEffect,useMemo,useState } from 'react';
 import { api } from '../api';
-import { Button, EmptyState, Icon, Input, Spinner } from '../components/ui';
+import { apiError as normalizeError,type LegacyDto } from '../api/types';
+import { Button,EmptyState,Icon,Input,Spinner } from '../components/ui';
+import { useAppDispatch as useDispatch } from '../store/hooks';
 import { notify } from '../store/toastSlice';
 
 const localDate = () => {
@@ -10,7 +11,7 @@ const localDate = () => {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 };
 
-function CocktailThumb({ cocktail }) {
+function CocktailThumb({ cocktail }: { cocktail: LegacyDto }) {
   return cocktail.imageUrl
     ? <img src={cocktail.imageUrl} alt="" />
     : <span>{cocktail.name.slice(0, 1) || '酒'}</span>;
@@ -19,21 +20,21 @@ function CocktailThumb({ cocktail }) {
 export default function DailyRecommendations() {
   const dispatch = useDispatch();
   const [date, setDate] = useState(localDate);
-  const [items, setItems] = useState([]);
-  const [candidates, setCandidates] = useState([]);
+  const [items, setItems] = useState<LegacyDto[]>([]);
+  const [candidates, setCandidates] = useState<LegacyDto[]>([]);
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const loadConfiguration = useCallback(async (targetDate) => {
+  const loadConfiguration = useCallback(async (targetDate: string) => {
     setLoading(true);
     setError('');
     try {
       const result = await api.dailyRecommendation.get(targetDate);
-      setItems(result.items.map((item) => item.cocktail));
-    } catch (requestError) {
+      setItems(result.items.map((item: LegacyDto) => item.cocktail));
+    } catch (caught) { const requestError = normalizeError(caught);
       setItems([]);
       setError(requestError.message || '今日推荐加载失败');
     } finally {
@@ -51,7 +52,7 @@ export default function DailyRecommendations() {
         keyword: searchKeyword.trim(),
       });
       setCandidates(result.items.filter((cocktail) => !cocktail.isPrivate));
-    } catch (requestError) {
+    } catch (caught) { const requestError = normalizeError(caught);
       dispatch(notify('error', requestError.message || '可选酒单加载失败'));
     } finally {
       setSearching(false);
@@ -64,7 +65,7 @@ export default function DailyRecommendations() {
   const selectedIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
   const available = candidates.filter((candidate) => !selectedIds.has(candidate.id));
 
-  const move = (index, delta) => {
+  const move = (index: number, delta: number) => {
     const target = index + delta;
     if (target < 0 || target >= items.length) return;
     setItems((current) => {
@@ -80,7 +81,7 @@ export default function DailyRecommendations() {
       await api.dailyRecommendation.replace(date, items.map((item) => item.id));
       dispatch(notify('success', items.length ? `${date} 的今日推荐已保存` : `${date} 的今日推荐已清空`));
       await loadConfiguration(date);
-    } catch (requestError) {
+    } catch (caught) { const requestError = normalizeError(caught);
       dispatch(notify('error', requestError.message || '今日推荐保存失败'));
     } finally {
       setSaving(false);

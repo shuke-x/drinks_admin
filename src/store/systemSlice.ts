@@ -1,31 +1,34 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import { api } from '../api';
-import { notify } from './toastSlice';
+import type { LegacyDto,PermissionDto,RoleDto,RoleInput } from '../api/types';
+import { apiError } from '../api/types';
 import { restoreSession } from './authSlice';
+import { createAppAsyncThunk as createAsyncThunk } from './thunk';
+import { notify } from './toastSlice';
 
 export const fetchRoles = createAsyncThunk('system/fetchRoles', async (_, { rejectWithValue }) => {
-  try { return await api.role.list(); } catch (e) { return rejectWithValue(e); }
+  try { return await api.role.list(); } catch (caught) { const e = apiError(caught); return rejectWithValue(e); }
 });
 
-export const saveRole = createAsyncThunk('system/saveRole', async ({ id, body }, { dispatch, rejectWithValue }) => {
+export const saveRole = createAsyncThunk('system/saveRole', async ({ id, body }: { id?: string; body: RoleInput }, { dispatch, rejectWithValue }) => {
   try {
     const res = id ? await api.role.update(id, body) : await api.role.create(body);
     dispatch(notify('success', id ? '角色已更新' : `角色「${body.name}」已创建`));
     dispatch(fetchRoles());
     return res;
-  } catch (e) {
+  } catch (caught) { const e = apiError(caught);
     dispatch(notify('error', e.message || '保存失败'));
     return rejectWithValue(e);
   }
 });
 
-export const createPermission = createAsyncThunk('system/createPermission', async (body, { dispatch, rejectWithValue }) => {
+export const createPermission = createAsyncThunk('system/createPermission', async (body: LegacyDto, { dispatch, rejectWithValue }) => {
   try {
     const result = await api.role.createPermission(body);
     dispatch(notify('success', `权限「${body.name}」已创建`));
     await Promise.all([dispatch(fetchRoles()), dispatch(restoreSession())]);
     return result;
-  } catch (e) {
+  } catch (caught) { const e = apiError(caught);
     dispatch(notify('error', e.message || '权限创建失败'));
     return rejectWithValue(e);
   }
@@ -33,22 +36,22 @@ export const createPermission = createAsyncThunk('system/createPermission', asyn
 
 export const fetchAuditLogs = createAsyncThunk('system/fetchAudit', async (_, { getState, rejectWithValue }) => {
   try { return await api.audit.list(getState().system.auditQuery); }
-  catch (e) { return rejectWithValue(e); }
+  catch (caught) { const e = apiError(caught); return rejectWithValue(e); }
 });
 
 export const fetchDashboard = createAsyncThunk('system/fetchDashboard', async (_, { rejectWithValue }) => {
-  try { return await api.dashboard.overview(); } catch (e) { return rejectWithValue(e); }
+  try { return await api.dashboard.overview(); } catch (caught) { const e = apiError(caught); return rejectWithValue(e); }
 });
 
 const systemSlice = createSlice({
   name: 'system',
   initialState: {
-    roles: { items: [], permissions: [], loading: false },
+    roles: { items: [] as RoleDto[], permissions: [] as PermissionDto[], loading: false },
     savingRole: false,
     savingPermission: false,
     auditQuery: { page: 1, pageSize: 10, targetType: '', action: '' },
-    audit: { items: [], total: 0, loading: false },
-    dashboard: { data: null, loading: false },
+    audit: { items: [] as LegacyDto[], total: 0, loading: false },
+    dashboard: { data: null as LegacyDto | null, loading: false },
   },
   reducers: {
     setAuditQuery(state, action) {

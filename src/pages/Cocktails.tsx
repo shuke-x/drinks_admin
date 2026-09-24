@@ -1,25 +1,29 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useSearchParams } from 'react-router-dom';
-import { createImportJob, fetchCocktails, setQuery } from '../store/cocktailsSlice';
-import { fetchCategories } from '../store/categoriesSlice';
-import { Button, Icon, Input, Pagination, Select, StatusBadge, TableShell, usePermission } from '../components/ui';
-import { STATUS_META, fmtTime, fromNow } from '../utils';
+import { useEffect,useMemo,useRef,useState } from 'react';
+import { Link,useSearchParams } from 'react-router-dom';
+import { type LegacyDto } from '../api/types';
 import { PERMISSION } from '../auth/permissions';
+import { Button,ConfirmModal,Icon,Input,Pagination,Select,StatusBadge,TableShell,usePermission } from '../components/ui';
+import { fetchCategories } from '../store/categoriesSlice';
+import { clearAllCocktails,createImportJob,fetchCocktails,setQuery } from '../store/cocktailsSlice';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
+import { STATUS_META,fmtTime,fromNow } from '../utils';
 
 const STATUS_PILLS = ['', 'pending', 'published', 'offline', 'rejected', 'draft'];
 
 export default function Cocktails() {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { query, list } = useSelector((s) => s.cocktails);
+  const { query, list, acting } = useSelector((s) => s.cocktails);
   const categories = useSelector((s) => s.categories.items);
   const categoryNameByCode = useMemo(
     () => Object.fromEntries(categories.map((category) => [category.code, category.name])),
     [categories],
   );
-  const importInputRef = useRef(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const can = usePermission();
+  const currentUser = useSelector((s) => s.auth.user);
+  const isSuperAdmin = currentUser?.roles?.some((role) => role.code === 'super_admin') ?? false;
+  const [clearOpen, setClearOpen] = useState(false);
 
   // 从 URL 读取初始状态筛选(工作台「去审核」等入口)
   useEffect(() => {
@@ -35,17 +39,17 @@ export default function Cocktails() {
     if (categories.length === 0) dispatch(fetchCategories());
   }, [categories.length, dispatch]);
 
-  const update = (patch) => {
+  const update = (patch: LegacyDto) => {
     dispatch(setQuery(patch));
     if ('status' in patch) setSearchParams(patch.status ? { status: patch.status } : {});
   };
 
-  const importFile = async (event) => {
+  const importFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const [file] = event.target.files || [];
     event.target.value = '';
     if (!file) return;
     const ext = file.name.toLowerCase().split('.').pop();
-    if (!['json', 'xlsx'].includes(ext) || file.size > 10 * 1024 * 1024) {
+    if (!['json', 'xlsx'].includes(ext ?? '') || file.size > 10 * 1024 * 1024) {
       window.alert('请选择不超过 10 MB 的 .json 或 .xlsx 文件');
       return;
     }
@@ -73,6 +77,7 @@ export default function Cocktails() {
               <Icon name="up" size={14} />导入 Excel / JSON
             </Button>
           </>}
+          {isSuperAdmin && can(PERMISSION.COCKTAILS_DELETE) && <Button variant="danger" size="sm" onClick={() => setClearOpen(true)}>清理全部酒单</Button>}
           <Select value={query.baseSpirit} onChange={(e) => update({ baseSpirit: e.target.value })}>
             <option value="">全部基酒</option>
             {categories.map((category) => (
@@ -129,6 +134,18 @@ export default function Cocktails() {
       <Pagination
         page={query.page} pageSize={query.pageSize} total={list.total}
         onChange={(page) => dispatch(setQuery({ page }))}
+      />
+      <ConfirmModal
+        open={clearOpen}
+        title="清理数据库中的全部酒单"
+        desc="此操作会永久删除所有酒单及其审核记录、修订、收藏和每日推荐关联，删除后无法恢复。确认已经备份，并准备重新导入吗？"
+        confirmText="确认永久清理"
+        loading={acting}
+        onClose={() => setClearOpen(false)}
+        onConfirm={async () => {
+          const result = await dispatch(clearAllCocktails());
+          if (result.meta.requestStatus !== 'rejected') setClearOpen(false);
+        }}
       />
     </div>
   );

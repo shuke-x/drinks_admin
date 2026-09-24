@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchDashboard } from '../store/systemSlice';
-import { Chip, EmptyState, Icon, Spinner, usePermission } from '../components/ui';
-import { CountUp, FadeContent, SplitText, SpotlightCard } from '../components/react-bits';
-import { AUDIT_ACTION_LABEL, BASE_SPIRITS, fmtNum, fromNow, greeting } from '../utils';
+import { type LegacyDto } from '../api/types';
 import { PERMISSION } from '../auth/permissions';
+import { CountUp,FadeContent,SplitText,SpotlightCard } from '../components/react-bits';
+import { Chip,EmptyState,Icon,Spinner,usePermission } from '../components/ui';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
+import { fetchDashboard } from '../store/systemSlice';
+import { AUDIT_ACTION_LABEL,BASE_SPIRITS,fmtNum,fromNow,greeting } from '../utils';
 
 const STAT_CARDS = [
   { key: 'pending', label: '待审核', icon: 'clock', tone: 'amber', perm: PERMISSION.COCKTAILS_READ, link: '/cocktails?status=pending' },
@@ -35,14 +36,14 @@ export default function Dashboard() {
         </div>
         <p className="dash-hero__sub">
           这里是酒单的后厨:内容先入库,审核通过才见客。
-          {can(PERMISSION.COCKTAILS_REVIEW) && data?.pending > 0 && <> 队列里还有 <strong>{data.pending}</strong> 杯等你过目。</>}
+          {can(PERMISSION.COCKTAILS_REVIEW) && data?.pending > 0 && <> 队列里还有 <strong>{data?.pending}</strong> 杯等你过目。</>}
         </p>
       </header>
 
       {loading && !data ? <Spinner /> : (
         <>
           <section className="stat-grid">
-            {cards.map((c, i) => (
+            {cards.map((c: LegacyDto, i: number) => (
               <FadeContent key={c.key} delay={i * 60}>
                 <SpotlightCard className={`stat stat--${c.tone}`}>
                   <div className="stat__head">
@@ -65,7 +66,7 @@ export default function Dashboard() {
                     <Link to="/cocktails?status=published" className="card__more">全部已上架</Link>
                   </header>
                   <ol className="hot-list">
-                    {data.hotCocktails.slice(0, 5).map((c, i) => (
+                    {data?.hotCocktails.slice(0, 5).map((c: LegacyDto, i: number) => (
                       <li key={c.id} className="hot-list__item">
                         <span className={`hot-list__rank${i === 0 ? ' is-top' : ''}`}>{i + 1}</span>
                         <div className="hot-list__main">
@@ -92,7 +93,7 @@ export default function Dashboard() {
                 </header>
                 {data?.pendingQueue?.length ? (
                   <ul className="queue">
-                    {data.pendingQueue.map((c) => (
+                    {data?.pendingQueue.map((c: LegacyDto) => (
                       <li key={c.id} className="queue__item">
                         <div className="queue__main">
                           <Link to={`/cocktails/${c.id}`} className="queue__name">{c.name}</Link>
@@ -118,7 +119,7 @@ export default function Dashboard() {
                     <Link to="/audit-logs" className="card__more">审计日志</Link>
                   </header>
                   <ul className="mini-audit">
-                    {(data?.recentAudits || []).map((l) => (
+                    {(data?.recentAudits || []).map((l: LegacyDto) => (
                       <li key={l.id} className="mini-audit__item">
                         <span className="mini-audit__actor">{l.actor?.nickname || '—'}</span>
                         <span className="mini-audit__action">{AUDIT_ACTION_LABEL[l.action] || l.action}</span>

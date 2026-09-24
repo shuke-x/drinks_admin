@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { deleteCategory, fetchCategories, saveCategory, setCategoryActive } from '../store/categoriesSlice';
-import { Button, Chip, ConfirmModal, EmptyState, Field, Input, Modal, TableShell, Textarea } from '../components/ui';
+import { useEffect,useState } from 'react';
+import { type LegacyDto } from '../api/types';
+import { Button,Chip,ConfirmModal,EmptyState,Field,Input,Modal,TableShell,Textarea } from '../components/ui';
+import { deleteCategory,fetchCategories,saveCategory,setCategoryActive } from '../store/categoriesSlice';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
 
-const EMPTY_FORM = { code: '', name: '', nameEn: '', description: '', iconUrl: '', sortOrder: 0, isActive: true };
+const EMPTY_FORM = { code: '', name: '', nameEn: '', description: '', descriptionEn: '', iconUrl: '', sortOrder: 0, isActive: true };
 
-function CategoryModal({ category, open, acting, onClose, onSave }) {
+function CategoryModal({ category, open, acting, onClose, onSave }: { category: LegacyDto | null; open: boolean; acting: boolean; onClose: () => void; onSave: (body: LegacyDto) => void }) {
   const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => {
@@ -14,15 +15,15 @@ function CategoryModal({ category, open, acting, onClose, onSave }) {
       code: category.code,
       name: category.name,
       nameEn: category.nameEn || '',
-      description: category.description || '',
+      description: category.description || '', descriptionEn: category.descriptionEn || '',
       iconUrl: category.iconUrl || '',
       sortOrder: category.sortOrder ?? 0,
       isActive: category.isActive,
     } : EMPTY_FORM);
   }, [category, open]);
 
-  const set = (key) => (event) => {
-    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+  const set = (key: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const value = event.target instanceof HTMLInputElement && event.target.type === 'checkbox' ? event.target.checked : event.target.value;
     setForm((current) => ({ ...current, [key]: value }));
   };
   const validCode = /^[a-z0-9][a-z0-9_-]*$/.test(form.code);
@@ -30,7 +31,7 @@ function CategoryModal({ category, open, acting, onClose, onSave }) {
   const submit = () => onSave({
     name: form.name.trim(),
     nameEn: form.nameEn.trim() || undefined,
-    description: form.description.trim() || undefined,
+    description: form.description.trim() || undefined, descriptionEn: form.descriptionEn.trim() || undefined,
     iconUrl: form.iconUrl.trim() || undefined,
     sortOrder: Number(form.sortOrder) || 0,
     isActive: form.isActive,
@@ -56,6 +57,7 @@ function CategoryModal({ category, open, acting, onClose, onSave }) {
       </div>
       <Field label="图标 URL"><Input value={form.iconUrl} placeholder="https://…" onChange={set('iconUrl')} /></Field>
       <Field label="分类说明"><Textarea rows={3} value={form.description} onChange={set('description')} /></Field>
+      <Field label="英文分类说明"><Textarea rows={3} value={form.descriptionEn} onChange={set('descriptionEn')} /></Field>
       <label className="category-active-toggle">
         <input type="checkbox" checked={form.isActive} onChange={set('isActive')} />
         <span><strong>启用分类</strong><small>停用后不会出现在客户端公开分类接口中</small></span>
@@ -67,15 +69,15 @@ function CategoryModal({ category, open, acting, onClose, onSave }) {
 export default function Categories() {
   const dispatch = useDispatch();
   const { items, loading, acting, error } = useSelector((state) => state.categories);
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState<LegacyDto | null>(null);
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState(null);
+  const [deleting, setDeleting] = useState<LegacyDto | null>(null);
 
   useEffect(() => { dispatch(fetchCategories()); }, [dispatch]);
   const closeEditor = () => { setCreating(false); setEditing(null); };
-  const save = async (body) => {
+  const save = async (body: LegacyDto) => {
     const result = await dispatch(saveCategory({ id: editing?.id, body }));
-    if (!result.error) closeEditor();
+    if (!(result.meta.requestStatus === "rejected")) closeEditor();
   };
 
   return (
@@ -98,7 +100,7 @@ export default function Categories() {
                   <td><code>{category.code}</code></td>
                   <td>{category.sortOrder}</td>
                   <td><Chip tone={category.isActive ? 'amber' : 'slate'}>{category.isActive ? '启用' : '停用'}</Chip></td>
-                  <td className="category-description">{category.description || '—'}</td>
+                  <td className="category-description">{category.description || '—'}{category.descriptionEn && <span className="cell-sub">{category.descriptionEn}</span>}</td>
                   <td className="cell-actions">
                     <Button variant="ghost" size="sm" onClick={() => setEditing(category)}>编辑</Button>
                     <Button variant="ghost" size="sm" disabled={acting} onClick={() => dispatch(setCategoryActive({ id: category.id, isActive: !category.isActive }))}>{category.isActive ? '停用' : '启用'}</Button>
@@ -120,8 +122,8 @@ export default function Categories() {
         loading={acting}
         onClose={() => setDeleting(null)}
         onConfirm={async () => {
-          const result = await dispatch(deleteCategory({ id: deleting.id, name: deleting.name }));
-          if (!result.error) setDeleting(null);
+          const result = await dispatch(deleteCategory({ id: deleting!.id, name: deleting!.name }));
+          if (!(result.meta.requestStatus === "rejected")) setDeleting(null);
         }}
       />
     </div>

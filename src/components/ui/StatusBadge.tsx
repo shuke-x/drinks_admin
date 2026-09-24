@@ -1,12 +1,12 @@
-import { STATUS_FLOW, STATUS_META } from '../../utils';
+import { STATUS_FLOW,STATUS_META } from '../../utils';
 
-const progressIndex = (status) => {
+const progressIndex = (status: string) => {
   if (status === 'rejected') return 1;
   if (status === 'offline') return 2;
   return Math.max(0, STATUS_FLOW.indexOf(status));
 };
 
-export function StatusBadge({ status }) {
+export function StatusBadge({ status }: { status: string }) {
   const meta = STATUS_META[status] || { label: status, tone: 'slate' };
   const currentStep = progressIndex(status);
 

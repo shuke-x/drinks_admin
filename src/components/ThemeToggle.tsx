@@ -1,5 +1,5 @@
-import { Icon } from './ui';
 import type { Theme } from '../theme/theme';
+import { Icon } from './ui';
 
 type ThemeToggleProps = {
   theme: Theme;

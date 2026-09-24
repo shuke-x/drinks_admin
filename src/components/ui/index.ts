@@ -1,5 +1,5 @@
-export { Avatar } from './Avatar';
 export { AbvBadge } from './AbvBadge';
+export { Avatar } from './Avatar';
 export { Button } from './Button';
 export { Chip } from './Chip';
 export { ConfirmModal } from './ConfirmModal';

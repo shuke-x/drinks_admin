@@ -1,1 +1,1 @@
-export const Textarea = (props) => <textarea className="input input--area" {...props} />;
+export const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea className="input input--area" {...props} />;

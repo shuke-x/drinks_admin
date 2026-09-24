@@ -7,14 +7,12 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "strict": false,
-    "noImplicitAny": false,
+    "strict": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "noCheck": true,
     "jsx": "react-jsx"
   },
   "include": ["src", "vite.config.ts"]

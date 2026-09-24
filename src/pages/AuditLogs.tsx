@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect,useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchAuditLogs, setAuditQuery } from '../store/systemSlice';
-import { Chip, Icon, Input, Pagination, TableShell } from '../components/ui';
-import { AUDIT_ACTION_LABEL, fmtTime } from '../utils';
+import { Chip,Icon,Input,Pagination,TableShell } from '../components/ui';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
+import { fetchAuditLogs,setAuditQuery } from '../store/systemSlice';
+import { AUDIT_ACTION_LABEL,fmtTime } from '../utils';
 
-const TONE_BY_PREFIX = { user: 'red', cocktail: 'amber', role: 'violet' };
+const TONE_BY_PREFIX: Record<string, string> = { user: 'red', cocktail: 'amber', role: 'violet' };
 
-function Snapshot({ label, value }) {
+function Snapshot({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="snapshot">
       <span className="snapshot__label">{label}</span>

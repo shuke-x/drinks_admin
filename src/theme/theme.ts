@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect,useState } from 'react';
 
 export const THEME_STORAGE_KEY = 'backbar-theme';
 export const THEMES = ['light', 'dark'] as const;

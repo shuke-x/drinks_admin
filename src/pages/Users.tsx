@@ -1,23 +1,24 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useSearchParams } from 'react-router-dom';
-import { changeUserStatus, clearDetail, deleteUser, fetchUser, fetchUsers, saveUserRoles, setQuery } from '../store/usersSlice';
-import { fetchRoles } from '../store/systemSlice';
-import {
-  Avatar, Button, Chip, ConfirmModal, Drawer, Icon, Input, Pagination, ReasonModal, Select,
-  Spinner, StatusBadge, TableShell, UserStatusBadge, usePermission,
-} from '../components/ui';
-import { fmtTime, fromNow } from '../utils';
+import { useEffect,useState } from 'react';
+import { Link,useSearchParams } from 'react-router-dom';
+import { type LegacyDto,type RoleDto } from '../api/types';
 import { PERMISSION } from '../auth/permissions';
+import {
+Avatar,Button,Chip,ConfirmModal,Drawer,Icon,Input,Pagination,ReasonModal,Select,
+Spinner,StatusBadge,TableShell,UserStatusBadge,usePermission,
+} from '../components/ui';
 import { CreateUserModal } from '../components/users/CreateUserModal';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
+import { fetchRoles } from '../store/systemSlice';
+import { changeUserStatus,clearDetail,deleteUser,fetchUser,fetchUsers,saveUserRoles,setQuery } from '../store/usersSlice';
+import { fmtTime,fromNow } from '../utils';
 
-function UserDrawer({ userId, onClose }) {
+function UserDrawer({ userId, onClose }: { userId: string | null; onClose: () => void }) {
   const dispatch = useDispatch();
   const can = usePermission();
   const me = useSelector((s) => s.auth.user);
   const { detail, acting } = useSelector((s) => s.users);
   const roleOptions = useSelector((s) => s.system.roles.items);
-  const [roleIds, setRoleIds] = useState(null);
+  const [roleIds, setRoleIds] = useState<string[] | null>(null);
   const [disabling, setDisabling] = useState(false);
 
   useEffect(() => {
@@ -32,16 +33,16 @@ function UserDrawer({ userId, onClose }) {
   const data = detail.data;
   const user = data?.user;
   useEffect(() => {
-    if (user) setRoleIds(user.roles.map((r) => r.id));
+    if (user) setRoleIds(user.roles.map((r: RoleDto) => r.id));
   }, [user]);
 
   if (!userId) return null;
 
   const rolesDirty = user && roleIds &&
-    JSON.stringify([...roleIds].sort()) !== JSON.stringify(user.roles.map((r) => r.id).sort());
+    JSON.stringify([...roleIds].sort()) !== JSON.stringify(user.roles.map((r: RoleDto) => r.id).sort());
 
-  const toggleRole = (rid) =>
-    setRoleIds((ids) => (ids.includes(rid) ? ids.filter((x) => x !== rid) : [...ids, rid]));
+  const toggleRole = (rid: string) =>
+    setRoleIds((current) => { const ids = current ?? []; return (ids.includes(rid) ? ids.filter((x) => x !== rid) : [...ids, rid]); });
 
   return (
     <Drawer
@@ -56,7 +57,7 @@ function UserDrawer({ userId, onClose }) {
             <div>
               <div className="user-detail__badges">
                 <UserStatusBadge status={user.status} />
-                {user.roles.map((r) => <Chip key={r.id} tone="amber">{r.name}</Chip>)}
+                {user.roles.map((r: RoleDto) => <Chip key={r.id} tone="amber">{r.name}</Chip>)}
               </div>
               <p className="user-detail__meta">
                 {user.accountSource === 'admin' ? '后台创建' : 'App 注册'} · {fmtTime(user.createdAt)}
@@ -88,7 +89,7 @@ function UserDrawer({ userId, onClose }) {
             <section className="user-detail__section">
               <h4>最近内容</h4>
               <ul className="queue queue--tight">
-                {data.recentCocktails.map((c) => (
+                {data.recentCocktails.map((c: LegacyDto) => (
                   <li key={c.id} className="queue__item">
                     <div className="queue__main">
                       <Link to={`/cocktails/${c.id}`} className="queue__name" onClick={onClose}>{c.name}</Link>
@@ -105,7 +106,7 @@ function UserDrawer({ userId, onClose }) {
             <section className="user-detail__section">
               <h4>角色分配<span className="section-note">替换整套角色集合(PUT)</span></h4>
               <div className="role-checks">
-                {roleOptions.map((r) => (
+                {roleOptions.map((r: RoleDto) => (
                   <label key={r.id} className={`role-check${roleIds.includes(r.id) ? ' is-on' : ''}`}>
                     <input
                       type="checkbox" checked={roleIds.includes(r.id)}
@@ -160,7 +161,7 @@ function UserDrawer({ userId, onClose }) {
             onClose={() => setDisabling(false)}
             onConfirm={async (reason) => {
               const res = await dispatch(changeUserStatus({ id: user.id, status: 'disabled', reason }));
-              if (!res.error) setDisabling(false);
+              if (!(res.meta.requestStatus === "rejected")) setDisabling(false);
             }}
           />
         </div>
@@ -177,7 +178,7 @@ export default function Users() {
   const can = usePermission();
   const [activeId, setActiveId] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState(null);
+  const [deleting, setDeleting] = useState<LegacyDto | null>(null);
   const isSuperAdmin = me?.roles?.some((role) => role.code === 'super_admin');
 
   useEffect(() => {
@@ -246,7 +247,7 @@ export default function Users() {
                   </div>
                 </td>
                 <td><Chip tone={u.accountSource === 'admin' ? 'amber' : 'default'}>{u.accountSource === 'admin' ? '后台创建' : 'App 注册'}</Chip></td>
-                <td><span className="chips">{u.roles.map((r) => <Chip key={r.id} tone={r.code === 'user' ? 'default' : 'amber'}>{r.name}</Chip>)}</span></td>
+                <td><span className="chips">{u.roles.map((r: RoleDto) => <Chip key={r.id} tone={r.code === 'user' ? 'default' : 'amber'}>{r.name}</Chip>)}</span></td>
                 <td><UserStatusBadge status={u.status} /></td>
                 <td>{u.cocktailCount}</td>
                 <td>{fmtTime(u.createdAt).slice(0, 10)}</td>
@@ -277,9 +278,9 @@ export default function Users() {
         loading={acting}
         onClose={() => setDeleting(null)}
         onConfirm={async () => {
-          const result = await dispatch(deleteUser(deleting.id));
-          if (!result.error) {
-            if (activeId === deleting.id) setActiveId(null);
+          const result = await dispatch(deleteUser(deleting!.id));
+          if (!(result.meta.requestStatus === "rejected")) {
+            if (activeId === deleting?.id) setActiveId(null);
             setDeleting(null);
           }
         }}

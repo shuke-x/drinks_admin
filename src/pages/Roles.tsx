@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createPermission, fetchRoles, saveRole } from '../store/systemSlice';
-import { Button, Chip, Field, Icon, Input, Modal, PermissionGate, Spinner, Textarea } from '../components/ui';
+import { useEffect,useMemo,useState } from 'react';
+import { type PermissionDto,type RoleDto,type RoleInput } from '../api/types';
+import { PERMISSION,PERMISSION_GROUPS } from '../auth/permissions';
 import { FadeContent } from '../components/react-bits';
-import { PERMISSION, PERMISSION_GROUPS } from '../auth/permissions';
+import { Button,Chip,Field,Icon,Input,Modal,PermissionGate,Spinner,Textarea } from '../components/ui';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
+import { createPermission,fetchRoles,saveRole } from '../store/systemSlice';
 
-function PermissionModal({ open, saving, onClose, onSave }) {
+function PermissionModal({ open, saving, onClose, onSave }: { open: boolean; saving: boolean; onClose: () => void; onSave: (body: { code: string; name: string }) => void }) {
   const [form, setForm] = useState({ code: '', name: '' });
 
   useEffect(() => {
@@ -53,25 +54,25 @@ function PermissionModal({ open, saving, onClose, onSave }) {
   );
 }
 
-function RoleModal({ open, role, permissions, saving, onClose, onSave }) {
+export function RoleModal({ open, role, permissions, saving, onClose, onSave }: { open: boolean; role: RoleDto | null; permissions: PermissionDto[]; saving: boolean; onClose: () => void; onSave: (payload: { id?: string; body: RoleInput }) => void }) {
   const isEdit = !!role;
   const isSuper = role?.code === 'super_admin';
-  const [form, setForm] = useState({ code: '', name: '', description: '', permissionIds: [] });
+  const [form, setForm] = useState({ code: '', name: '', description: '', permissionIds: [] as string[] });
 
   useEffect(() => {
     if (!open) return;
     setForm(role
       ? { code: role.code, name: role.name, description: role.description || '', permissionIds: [...role.permissionIds] }
-      : { code: '', name: '', description: '', permissionIds: [] });
+      : { code: '', name: '', description: '', permissionIds: [] as string[] });
   }, [open, role]);
 
   const groups = useMemo(() => {
-    const map = {};
+    const map: Record<string, PermissionDto[]> = {};
     permissions.forEach((p) => { (map[p.group] ||= []).push(p); });
     return map;
   }, [permissions]);
 
-  const toggle = (pid) => setForm((f) => ({
+  const toggle = (pid: string) => setForm((f) => ({
     ...f,
     permissionIds: f.permissionIds.includes(pid)
       ? f.permissionIds.filter((x) => x !== pid)
@@ -144,21 +145,21 @@ export default function Roles() {
   const { items, permissions, loading } = useSelector((s) => s.system.roles);
   const saving = useSelector((s) => s.system.savingRole);
   const savingPermission = useSelector((s) => s.system.savingPermission);
-  const [editing, setEditing] = useState(null); // null | 'new' | role
+  const [editing, setEditing] = useState<RoleDto | 'new' | null>(null); // null | 'new' | role
   const [permissionOpen, setPermissionOpen] = useState(false);
 
   useEffect(() => { dispatch(fetchRoles()); }, [dispatch]);
 
-  const permName = (pid) => permissions.find((p) => p.id === pid)?.name || pid;
+  const permName = (pid: string) => permissions.find((p) => p.id === pid)?.name || pid;
 
-  const submit = async (payload) => {
+  const submit = async (payload: { id?: string; body: RoleInput }) => {
     const res = await dispatch(saveRole(payload));
-    if (!res.error) setEditing(null);
+    if (!(res.meta.requestStatus === "rejected")) setEditing(null);
   };
 
-  const submitPermission = async (body) => {
+  const submitPermission = async (body: { code: string; name: string }) => {
     const result = await dispatch(createPermission(body));
-    if (!result.error) setPermissionOpen(false);
+    if (!(result.meta.requestStatus === "rejected")) setPermissionOpen(false);
   };
 
   if (loading && items.length === 0) return <Spinner />;

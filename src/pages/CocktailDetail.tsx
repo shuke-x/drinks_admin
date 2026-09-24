@@ -1,23 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect,useMemo,useState } from 'react';
+import { Link,useNavigate,useParams } from 'react-router-dom';
+import { api } from '../api';
+import { apiError,type LegacyDto } from '../api/types';
+import { PERMISSION } from '../auth/permissions';
+import { FadeContent } from '../components/react-bits';
 import {
-  approveCocktail, clearDetail, deleteCocktail, fetchCocktail,
-  offlineCocktail, publishCocktail, rejectCocktail, updateCocktail,
-} from '../store/cocktailsSlice';
+AbvBadge,Button,Chip,ConfirmModal,EmptyState,Field,Icon,Input,Modal,
+ReasonModal,Select,Spinner,StatusBadge,Textarea,usePermission,
+} from '../components/ui';
 import { fetchCategories } from '../store/categoriesSlice';
 import {
-  AbvBadge, Button, Chip, ConfirmModal, EmptyState, Field, Icon, Input, Modal,
-  ReasonModal, Select, Spinner, StatusBadge, Textarea, usePermission,
-} from '../components/ui';
-import { FadeContent } from '../components/react-bits';
-import { REVIEW_ACTION_LABEL, STATUS_META, fmtTime } from '../utils';
-import { api } from '../api';
-import { PERMISSION } from '../auth/permissions';
+approveCocktail,clearDetail,deleteCocktail,fetchCocktail,
+offlineCocktail,publishCocktail,rejectCocktail,updateCocktail,
+} from '../store/cocktailsSlice';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
+import { REVIEW_ACTION_LABEL,STATUS_META,fmtTime } from '../utils';
 
 /* ------------ 签名组件:状态轨道(对应文档 3.1 状态机) ------------ */
 
-function StateRail({ status }) {
+function StateRail({ status }: { status: string }) {
   const mainDone = { draft: 0, pending: 1, rejected: 1, published: 2, offline: 2 }[status] ?? 0;
   const main = [
     { key: 'draft', label: '草稿' },
@@ -49,23 +50,23 @@ function StateRail({ status }) {
 
 /* ----------------------------- 编辑弹窗 --------------------------- */
 
-function EditModal({ open, cocktail, categories, acting, onSave, onClose }) {
-  const [form, setForm] = useState(null);
+function EditModal({ open, cocktail, categories, acting, onSave, onClose }: { open: boolean; cocktail: LegacyDto; categories: LegacyDto[]; acting: boolean; onSave: (patch: LegacyDto) => void; onClose: () => void }) {
+  const [form, setForm] = useState<LegacyDto | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [uploading, setUploading] = useState(false);
   useEffect(() => {
     if (open && cocktail) {
       setForm({
         name: cocktail.name, nameEn: cocktail.nameEn || '', baseSpirit: cocktail.baseSpirit,
-        abv: cocktail.abv ?? '', description: cocktail.description || '',
-        tags: (cocktail.tags || []).join(','), imageUrl: cocktail.imageUrl || '',
+        abv: cocktail.abv ?? '', description: cocktail.description || '', descriptionEn: cocktail.descriptionEn || cocktail.storyEn || '',
+        tags: (cocktail.tags || []).join(','), tagsEn: (cocktail.tagsEn || []).join(','), imageUrl: cocktail.imageUrl || '',
       });
       setUploadError('');
     }
   }, [open, cocktail]);
   if (!form) return null;
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const uploadImage = async (event) => {
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
+  const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -82,7 +83,7 @@ function EditModal({ open, cocktail, categories, acting, onSave, onClose }) {
       if (!result?.url) throw new Error('上传响应缺少图片 URL');
       setForm((current) => ({ ...current, imageUrl: result.url }));
       setUploadError('');
-    } catch (error) {
+    } catch (caught) { const error = apiError(caught);
       setUploadError(error?.message || '图片上传失败');
     } finally {
       setUploading(false);
@@ -103,8 +104,8 @@ function EditModal({ open, cocktail, categories, acting, onSave, onClose }) {
             onClick={() => onSave({
               name: form.name.trim(), nameEn: form.nameEn.trim(), baseSpirit: form.baseSpirit,
               abv: form.abv === '' ? null : Number(form.abv),
-              description: form.description.trim(),
-              tags: form.tags.split(/[,,]/).map((t) => t.trim()).filter(Boolean),
+              description: form.description.trim(), descriptionEn: form.descriptionEn.trim(),
+              tags: form.tags.split(/[,,]/).map((t: string) => t.trim()).filter(Boolean), tagsEn: form.tagsEn.split(/[,,]/).map((t: string) => t.trim()).filter(Boolean),
               imageUrl: form.imageUrl.trim(),
             })}
           >
@@ -126,8 +127,10 @@ function EditModal({ open, cocktail, categories, acting, onSave, onClose }) {
         <Field label="酒精度(% ABV)"><Input type="number" min="0" max="80" value={form.abv} onChange={set('abv')} /></Field>
       </div>
       <Field label="描述"><Textarea rows={3} value={form.description} onChange={set('description')} /></Field>
+      <Field label="英文描述"><Textarea rows={3} value={form.descriptionEn} onChange={set('descriptionEn')} /></Field>
       <div className="form-grid">
         <Field label="标签(逗号分隔)"><Input value={form.tags} onChange={set('tags')} /></Field>
+        <Field label="英文标签(逗号分隔)"><Input value={form.tagsEn} onChange={set('tagsEn')} /></Field>
         <Field label="图片 URL"><Input value={form.imageUrl} onChange={set('imageUrl')} placeholder="https://…" /></Field>
       </div>
       <Field label="上传酒单图片" hint={uploadError || (uploading ? '正在上传并处理图片…' : '支持 PNG、JPG、WebP；原始图片不超过 15 MB，上传后自动压缩为 WebP。')}>
@@ -156,11 +159,11 @@ export default function CocktailDetail() {
     () => Object.fromEntries(categories.map((category) => [category.code, category.name])),
     [categories],
   );
-  const [modal, setModal] = useState(null); // approve | reject | offline | publish | edit | delete
+  const [modal, setModal] = useState<string | null>(null); // approve | reject | offline | publish | edit | delete
 
   useEffect(() => {
-    dispatch(fetchCocktail(id));
-    return () => dispatch(clearDetail());
+    if (id) dispatch(fetchCocktail(id));
+    return () => { dispatch(clearDetail()); };
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -180,9 +183,9 @@ export default function CocktailDetail() {
   if (!c) return null;
 
   const close = () => setModal(null);
-  const run = async (thunk, arg) => {
+  const run = async (thunk: typeof approveCocktail, arg: Parameters<typeof approveCocktail>[0]) => {
     const res = await dispatch(thunk(arg));
-    if (!res.error) close();
+    if (!(res.meta.requestStatus === "rejected")) close();
     return res;
   };
 
@@ -193,7 +196,7 @@ export default function CocktailDetail() {
     c.status === 'offline' && can(PERMISSION.COCKTAILS_PUBLISH) && { key: 'publish', label: '重新上架', icon: 'up', variant: 'primary' },
     can(PERMISSION.COCKTAILS_UPDATE) && { key: 'edit', label: '运营修订', icon: 'edit', variant: 'ghost' },
     can(PERMISSION.COCKTAILS_DELETE) && { key: 'delete', label: '删除', icon: 'trash', variant: 'ghost' },
-  ].filter(Boolean);
+  ].filter((value): value is Exclude<typeof value, false> => value !== false);
 
   return (
     <div className="page">
@@ -222,7 +225,7 @@ export default function CocktailDetail() {
                 <h4 className="recipe__title">用料</h4>
                 <table className="table table--plain">
                   <tbody>
-                    {c.ingredients.map((it, i) => (
+                    {c.ingredients.map((it: LegacyDto, i: number) => (
                       <tr key={i}><td>{it.name}</td><td className="recipe__amount">{it.amount}</td></tr>
                     ))}
                   </tbody>
@@ -231,12 +234,12 @@ export default function CocktailDetail() {
               <div>
                 <h4 className="recipe__title">做法</h4>
                 <ol className="recipe__steps">
-                  {c.steps.map((s, i) => <li key={i}>{s}</li>)}
+                  {c.steps.map((s: string, i: number) => <li key={i}>{s}</li>)}
                 </ol>
               </div>
             </div>
             {c.tags?.length > 0 && (
-              <div className="detail-tags">{c.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div>
+              <div className="detail-tags">{c.tags.map((t: string) => <Chip key={t}>{t}</Chip>)}</div>
             )}
           </FadeContent>
 
@@ -347,7 +350,7 @@ export default function CocktailDetail() {
         confirmText="确认删除" onClose={close}
         onConfirm={async () => {
           const res = await dispatch(deleteCocktail({ id: c.id, skipRefresh: true }));
-          if (!res.error) navigate('/cocktails', { replace: true });
+          if (!(res.meta.requestStatus === "rejected")) navigate('/cocktails', { replace: true });
         }}
       />
       <EditModal

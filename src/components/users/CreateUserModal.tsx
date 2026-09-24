@@ -1,8 +1,8 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Button, Field, Input, Modal } from '../ui';
-import { createUser } from '../../store/usersSlice';
+import { FormEvent,useEffect,useState } from 'react';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../../store/hooks';
 import { fetchRoles } from '../../store/systemSlice';
+import { createUser } from '../../store/usersSlice';
+import { Button,Field,Input,Modal } from '../ui';
 
 interface CreateUserModalProps {
   open: boolean;

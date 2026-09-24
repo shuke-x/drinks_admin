@@ -2,13 +2,16 @@
   "name": "backbar-admin",
   "private": true,
   "version": "1.0.0",
-  "description": "酒单内容审核与 RBAC 后台管理系统(前端 Mock 实现)",
+  "description": "酒单内容审核与 RBAC 后台管理系统",
   "type": "module",
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:experience-local": "vite --host 127.0.0.1 --port 5178 --strictPort"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.2.7",
@@ -21,13 +24,19 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.185.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "jsdom": "^25.0.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "vitest": "^2.1.9"
   },
   "packageManager": "pnpm@9.15.4"
 }

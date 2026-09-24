@@ -1,18 +1,11 @@
 import { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { loginThunk } from '../store/authSlice';
-import { API_BASE, USE_MOCK } from '../api';
-import { Button, Field, Icon, Input } from '../components/ui';
+import { Navigate,useLocation,useNavigate } from 'react-router-dom';
 import { HotPoster } from '../components/HotPoster';
-import { FadeContent, ImageTrail, SplitText } from '../components/react-bits';
+import { FadeContent,ImageTrail,SplitText } from '../components/react-bits';
 import { FloatingLines } from '../components/react-bits/official';
-
-const QUICK_ACCOUNTS = [
-  { label: '超级管理员', email: 'admin@bar.dev', password: 'admin123', hint: '全部权限' },
-  { label: '运营', email: 'operator@bar.dev', password: 'operator123', hint: '用户启停 · 上下架' },
-  { label: '审核员', email: 'reviewer@bar.dev', password: 'reviewer123', hint: '仅审核通过 / 驳回' },
-];
+import { Button,Field,Icon,Input } from '../components/ui';
+import { loginThunk } from '../store/authSlice';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
 
 const BRAND_TRAIL_COCKTAILS = [
   { name: '金汤力', baseSpirit: 'gin', abv: 12, weeklyViews: 2874, likes: 436 },
@@ -29,14 +22,16 @@ export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { token, status, loggingIn, error } = useSelector((s) => s.auth);
+  const { status, loggingIn, error } = useSelector((s) => s.auth);
   const [form, setForm] = useState({ email: '', password: '' });
 
-  if (token && status !== 'restoring') {
+  if (status === 'restoring') return <div className="fullscreen-loading" role="status">正在恢复登录状态…</div>;
+
+  if (status === 'ready') {
     return <Navigate to={location.state?.from?.pathname || '/'} replace />;
   }
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const res = await dispatch(loginThunk(form));
     if (loginThunk.fulfilled.match(res)) {
@@ -105,28 +100,7 @@ export default function Login() {
             <Button type="submit" loading={loggingIn} className="login__submit">登录</Button>
           </form>
 
-          {USE_MOCK ? (
-            <>
-              <div className="login__divider"><span>演示账号,点击填充</span></div>
-              <div className="login__accounts">
-                {QUICK_ACCOUNTS.map((a) => (
-                  <button
-                    key={a.email} type="button" className="login__account"
-                    onClick={() => setForm({ email: a.email, password: a.password })}
-                  >
-                    <span className="login__account-name">{a.label}</span>
-                    <span className="login__account-hint">{a.hint}</span>
-                    <span className="login__account-email">{a.email}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="login__mode-note">
-              已连接后端 <code>{API_BASE}</code>,请使用真实账号登录;
-              离线演示可在 .env 中设置 <code>VITE_USE_MOCK=1</code>。
-            </p>
-          )}
+          <p className="login__mode-note">请使用管理员分配的账号登录。</p>
         </FadeContent>
       </section>
     </div>

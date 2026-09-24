@@ -1,5 +1,5 @@
 // 状态元信息(颜色 token 在 styles.css 中按 key 定义)
-export const STATUS_META = {
+export const STATUS_META: Record<string, { label: string; tone: string }> = {
   draft: { label: '草稿', tone: 'draft' },
   pending: { label: '待审核', tone: 'pending' },
   rejected: { label: '已驳回', tone: 'red' },
@@ -9,17 +9,17 @@ export const STATUS_META = {
 
 export const STATUS_FLOW = ['draft', 'pending', 'published']; // 状态轨道主线
 
-export const BASE_SPIRITS = {
+export const BASE_SPIRITS: Record<string, string> = {
   gin: '金酒', rum: '朗姆', whiskey: '威士忌', tequila: '龙舌兰',
   vodka: '伏特加', brandy: '白兰地', other: '其他',
 };
 
-export const REVIEW_ACTION_LABEL = {
+export const REVIEW_ACTION_LABEL: Record<string, string> = {
   submit: '提交审核', withdraw: '撤回', approve: '审核通过',
   reject: '审核驳回', publish: '重新上架', offline: '下架',
 };
 
-export const AUDIT_ACTION_LABEL = {
+export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'user.disable': '禁用用户', 'user.enable': '启用用户', 'user.assign_roles': '分配角色',
   'cocktail.approve': '审核通过', 'cocktail.reject': '审核驳回', 'cocktail.offline': '下架酒单',
   'cocktail.publish': '重新上架', 'cocktail.update': '编辑酒单', 'cocktail.delete': '删除酒单',
@@ -27,15 +27,15 @@ export const AUDIT_ACTION_LABEL = {
   'permissions.create': '创建权限',
 };
 
-const pad = (n) => String(n).padStart(2, '0');
+const pad = (n: number) => String(n).padStart(2, '0');
 
-export function fmtTime(iso) {
+export function fmtTime(iso?: string | null) {
   if (!iso) return '—';
   const d = new Date(iso);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function fromNow(iso) {
+export function fromNow(iso?: string | null) {
   if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);

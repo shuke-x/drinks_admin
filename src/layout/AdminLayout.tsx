@@ -1,15 +1,17 @@
-import { useDispatch, useSelector } from 'react-redux';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { loggedOut } from '../store/authSlice';
-import { Avatar, Chip, Icon, usePermission } from '../components/ui';
-import { API_BASE, USE_MOCK, api } from '../api';
+import { NavLink,Outlet,useLocation,useNavigate } from 'react-router-dom';
+import { API_BASE,api } from '../api';
+import { PERMISSION } from '../auth/permissions';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { ShinyText } from '../components/react-bits';
 import { SideRays } from '../components/react-bits/official';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { Avatar,Chip,Icon,usePermission } from '../components/ui';
+import { loggedOut } from '../store/authSlice';
+import { useAppDispatch as useDispatch,useAppSelector as useSelector } from '../store/hooks';
 import { useTheme } from '../theme/theme';
-import { PERMISSION } from '../auth/permissions';
 
 const NAV = [
+  { to: '/drink-records', label: '品饮记录', icon: 'glass', perm: PERMISSION.RECORDS_REVIEW },
+  { to: '/flavor-directions', label: '风味配置', icon: 'grid', perm: PERMISSION.FLAVORS_MANAGE },
   { to: '/', label: '工作台', icon: 'grid', end: true },
   { to: '/cocktails', label: '酒单管理', icon: 'glass', perm: PERMISSION.COCKTAILS_READ },
   { to: '/categories', label: '基酒分类', icon: 'grid', perm: PERMISSION.CATEGORIES_MANAGE },
@@ -20,6 +22,8 @@ const NAV = [
 ];
 
 const TITLES = [
+  { match: /^\/drink-records/, title: '品饮记录审核' },
+  { match: /^\/flavor-directions/, title: '风味配置与匹配规则' },
   { match: /^\/cocktails\/.+/, title: '酒单详情' },
   { match: /^\/cocktails/, title: '酒单管理' },
   { match: /^\/categories/, title: '基酒分类管理' },
@@ -43,6 +47,8 @@ export default function AdminLayout() {
   const logout = async () => {
     try {
       await api.auth.logout();
+    } catch {
+      window.alert('本地会话已退出，但服务端注销未完成。请恢复网络后重试注销。');
     } finally {
       dispatch(loggedOut());
       navigate('/login', { replace: true });
@@ -87,7 +93,7 @@ export default function AdminLayout() {
         <div className="sidebar__foot">
           <div className="sidebar__env">
             <span className="sidebar__env-dot" />
-            {USE_MOCK ? 'Mock 数据环境 · 刷新后重置' : `已连接后端 · ${API_BASE}`}
+            {`后端接口 · ${API_BASE}`}
           </div>
         </div>
       </aside>

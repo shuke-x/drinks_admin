@@ -1,3 +1,4 @@
+import { apiError,type LegacyDto } from './types';
 // ------------------------------------------------------------------
 // fetch 封装(请求核心)。全部接口经此发出:
 //   · 统一 baseURL(API_BASE)与 query 序列化
@@ -7,8 +8,8 @@
 // 业务接口不要直接使用 fetch,统一走 request.get / post / put / patch / delete。
 // ------------------------------------------------------------------
 
-export const TOKEN_KEY = 'backbar_token';
-export const REFRESH_TOKEN_KEY = 'backbar_refresh_token';
+import { cookieSession,csrfHeaders,expireSession,getAccessToken,sessionGeneration } from './session';
+export { REFRESH_TOKEN_KEY,TOKEN_KEY } from './session';
 
 /** 请求前缀。后端若无 /api/v1 前缀或需要绝对地址,在 .env 里改 VITE_API_BASE */
 export const API_BASE = (import.meta.env.VITE_API_BASE || '/api/v1').replace(/\/+$/, '');
@@ -17,29 +18,29 @@ const envTimeout = Number(import.meta.env.VITE_API_TIMEOUT_MS);
 export const API_TIMEOUT_MS = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 20_000;
 const UPLOAD_TIMEOUT_MS = Math.max(API_TIMEOUT_MS, 120_000);
 
-const timeoutError = (timeoutMs) => ({
+const timeoutError = (timeoutMs: number) => ({
   status: 0,
   code: 'REQUEST_TIMEOUT',
   message: `请求超时（${Math.ceil(timeoutMs / 1000)} 秒），请检查网络后重试`,
 });
 
 /** 保证所有请求最终成功或失败，避免 fetch 长时间挂起导致页面一直 loading。 */
-const fetchWithTimeout = async (url, options = {}, timeoutMs = API_TIMEOUT_MS) => {
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = API_TIMEOUT_MS) => {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (error) {
-    if (error?.name === 'AbortError') throw timeoutError(timeoutMs);
+    return await fetch(url, { credentials: cookieSession ? 'include' : 'omit', ...options, signal: controller.signal });
+  } catch (caught) { const error = apiError(caught);
+    if (caught instanceof Error && caught.name === 'AbortError') throw timeoutError(timeoutMs);
     throw error;
   } finally {
     window.clearTimeout(timer);
   }
 };
 
-const token = () => localStorage.getItem(TOKEN_KEY) || '';
+const token = getAccessToken;
 
-const unwrap = (payload) => {
+const unwrap = (payload: LegacyDto | null): any => {
   if (!payload || typeof payload !== 'object') return payload;
   if (
     payload.code !== undefined &&
@@ -61,9 +62,9 @@ const unwrap = (payload) => {
   return payload.data;
 };
 
-const errorFrom = async (res) => {
+const errorFrom = async (res: Response) => {
   const text = await res.text();
-  let payload = null;
+  let payload: any = null;
   if (text) {
     try { payload = JSON.parse(text); } catch { payload = text; }
   }
@@ -77,28 +78,22 @@ const errorFrom = async (res) => {
   return { status: res.status, message };
 };
 
-let refreshPromise = null;
+let refreshPromise: Promise<null> | null = null;
 const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (!refreshToken) throw { status: 401, message: '登录已过期，请重新登录' };
+  if (!cookieSession) { expireSession(); throw { status: 401, message: '登录已过期，请重新登录' }; }
   if (!refreshPromise) {
+    const generation = sessionGeneration();
     refreshPromise = fetchWithTimeout(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      headers: { ...csrfHeaders() },
     })
       .then(async (res) => {
         if (!res.ok) throw await errorFrom(res);
-        const raw = unwrap(await res.json());
-        if (!raw?.accessToken || !raw?.refreshToken)
-          throw { status: 401, message: '刷新登录状态失败' };
-        localStorage.setItem(TOKEN_KEY, raw.accessToken);
-        localStorage.setItem(REFRESH_TOKEN_KEY, raw.refreshToken);
-        return raw.accessToken;
+        if (generation !== sessionGeneration()) throw { status: 401, message: '会话已结束' };
+        return null;
       })
       .catch((error) => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        if (generation === sessionGeneration()) expireSession();
         throw error;
       })
       .finally(() => { refreshPromise = null; });
@@ -106,16 +101,16 @@ const refreshAccessToken = async () => {
   return refreshPromise;
 };
 
-const qs = (params = {}) => {
+const qs = (params: Record<string, unknown> = {}) => {
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') sp.append(k, v);
+    if (v !== undefined && v !== null && v !== '') sp.append(k, String(v));
   });
   const s = sp.toString();
   return s ? `?${s}` : '';
 };
 
-async function send(method, path, { params, body } = {}, retried = false) {
+async function send(method: string, path: string, { params, body }: { params?: Record<string, unknown>; body?: unknown } = {}, retried = false): Promise<any> {
   let res;
   try {
     res = await fetchWithTimeout(`${API_BASE}${path}${qs(params)}`, {
@@ -123,50 +118,53 @@ async function send(method, path, { params, body } = {}, retried = false) {
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
+        ...(!['GET', 'HEAD', 'OPTIONS'].includes(method) ? csrfHeaders() : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch (error) {
-    if (error?.code === 'REQUEST_TIMEOUT') throw error;
+  } catch (caught) { const error = apiError(caught);
+    if (error?.code === 'REQUEST_TIMEOUT' || error.status) throw error;
     throw { status: 0, message: `无法连接后端(${API_BASE}),请确认服务已启动、代理配置正确` };
   }
 
-  const refreshable = !['/auth/challenge', '/auth/login', '/auth/register', '/auth/refresh'].includes(path);
+  const refreshable = !['/auth/challenge', '/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path);
   if (res.status === 401 && !retried && refreshable) {
     await refreshAccessToken();
     return send(method, path, { params, body }, true);
   }
+  if (res.status === 401 && refreshable) expireSession();
   if (!res.ok) throw await errorFrom(res);
   const text = await res.text();
   if (!text) return null;
-  try { return unwrap(JSON.parse(text)); } catch (error) {
+  try { return unwrap(JSON.parse(text)); } catch (caught) { const error = apiError(caught);
     if (error?.status) throw error;
     return text;
   }
 }
 
 export const request = {
-  get: (path, params) => send('GET', path, { params }),
-  post: (path, body) => send('POST', path, { body }),
-  put: (path, body) => send('PUT', path, { body }),
-  patch: (path, body) => send('PATCH', path, { body }),
-  delete: (path, body) => send('DELETE', path, { body }),
-  postForm: async function postForm(path, formData, retried = false) {
+  get: <T = any>(path: string, params?: Record<string, unknown>): Promise<T> => send('GET', path, { params }),
+  post: <T = any>(path: string, body?: unknown): Promise<T> => send('POST', path, { body }),
+  put: <T = any>(path: string, body?: unknown): Promise<T> => send('PUT', path, { body }),
+  patch: <T = any>(path: string, body?: unknown): Promise<T> => send('PATCH', path, { body }),
+  delete: <T = any>(path: string, body?: unknown): Promise<T> => send('DELETE', path, { body }),
+  postForm: async function postForm(path: string, formData: FormData, retried = false): Promise<any> {
     let res;
     try {
       res = await fetchWithTimeout(
         `${API_BASE}${path}`,
-        { method: 'POST', headers: token() ? { Authorization: `Bearer ${token()}` } : {}, body: formData },
+        { method: 'POST', headers: { ...(token() ? { Authorization: `Bearer ${token()}` } : {}), ...csrfHeaders() }, body: formData },
         UPLOAD_TIMEOUT_MS,
       );
-    } catch (error) {
-      if (error?.code === 'REQUEST_TIMEOUT') throw error;
+    } catch (caught) { const error = apiError(caught);
+      if (error?.code === 'REQUEST_TIMEOUT' || error.status) throw error;
       throw { status: 0, message: `无法连接后端(${API_BASE}),请确认网络与服务状态` };
     }
     if (res.status === 401 && !retried) {
       await refreshAccessToken();
       return postForm(path, formData, true);
     }
+    if (res.status === 401) expireSession();
     if (!res.ok) throw await errorFrom(res);
     return unwrap(await res.json().catch(() => null));
   },

@@ -1,5 +1,5 @@
-import { AbvBadge, Icon } from './ui';
-import { BASE_SPIRITS, fmtNum } from '../utils';
+import { BASE_SPIRITS,fmtNum } from '../utils';
+import { AbvBadge,Icon } from './ui';
 
 const SPIRIT_TONE: Record<string, string> = {
   gin: 'green', rum: 'amber', whiskey: 'ochre',

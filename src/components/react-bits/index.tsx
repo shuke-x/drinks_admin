@@ -4,10 +4,10 @@
 // 样式定义见 styles.css 中的 .rb-* 部分;均已适配 prefers-reduced-motion。
 // ------------------------------------------------------------------
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect,useMemo,useRef,useState } from 'react';
 
 /** SplitText —— 逐字上浮入场 */
-export function SplitText({ text = '', delay = 34, className = '', as: Tag = 'span' }) {
+export function SplitText({ text = '', delay = 34, className = '', as: Tag = 'span' }: { text?: string; delay?: number; className?: string; as?: React.ElementType }) {
   const chars = useMemo(() => [...String(text)], [text]);
   return (
     <Tag className={`rb-split ${className}`} aria-label={text}>
@@ -33,9 +33,9 @@ export function CountUp({ value = 0, duration = 900, className = '' }) {
       setDisplay(to);
       return;
     }
-    let raf;
+    let raf: number;
     const start = performance.now();
-    const tick = (t) => {
+    const tick = (t: number) => {
       const p = Math.min(1, (t - start) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
       const cur = Math.round(from + (to - from) * eased);
@@ -51,9 +51,9 @@ export function CountUp({ value = 0, duration = 900, className = '' }) {
 }
 
 /** SpotlightCard —— 鼠标追光卡片 */
-export function SpotlightCard({ className = '', children, ...rest }) {
-  const ref = useRef(null);
-  const onMove = (e) => {
+export function SpotlightCard({ className = '', children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -79,7 +79,7 @@ export function Aurora({ className = '' }) {
 }
 
 /** FadeContent —— 淡入上移容器 */
-export function FadeContent({ delay = 0, className = '', children }) {
+export function FadeContent({ delay = 0, className = '', children }: { children?: React.ReactNode; delay?: number; className?: string }) {
   return (
     <div className={`rb-fade ${className}`} style={{ animationDelay: `${delay}ms` }}>
       {children}
@@ -88,7 +88,7 @@ export function FadeContent({ delay = 0, className = '', children }) {
 }
 
 /** ShinyText —— 流光文字 */
-export function ShinyText({ text, className = '' }) {
+export function ShinyText({ text, className = '' }: { text: string; className?: string }) {
   return <span className={`rb-shiny ${className}`}>{text}</span>;
 }
 
@@ -98,10 +98,10 @@ export function ShinyText({ text, className = '' }) {
  * 就在光标处「甩出」池中的下一张卡片,弹起后自行淡出。
  * 触屏 / prefers-reduced-motion 环境自动降级为可横滑的静态卡片列。
  */
-export function ImageTrail({ items = [], threshold = 52, className = '', children }) {
-  const zoneRef = useRef(null);
+export function ImageTrail({ items = [], threshold = 52, className = '', children }: { items?: React.ReactNode[]; threshold?: number; className?: string; children?: React.ReactNode }) {
+  const zoneRef = useRef<HTMLDivElement>(null);
   const idxRef = useRef(0);
-  const lastRef = useRef({ x: null, y: null });
+  const lastRef = useRef<{ x: number | null; y: number | null }>({ x: null, y: null });
   const [interactive, setInteractive] = useState(true);
 
   useEffect(() => {
@@ -110,17 +110,17 @@ export function ImageTrail({ items = [], threshold = 52, className = '', childre
     setInteractive(Boolean(fine) && !reduced);
   }, []);
 
-  const onMove = (e) => {
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const zone = zoneRef.current;
     if (!zone || items.length === 0) return;
     const rect = zone.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const { x: lx, y: ly } = lastRef.current;
-    if (lx !== null && (x - lx) ** 2 + (y - ly) ** 2 < threshold * threshold) return;
+    if (lx !== null && ly !== null && (x - lx) ** 2 + (y - ly) ** 2 < threshold * threshold) return;
     lastRef.current = { x, y };
 
-    const pool = zone.querySelectorAll('.rb-trail__item');
+    const pool = zone.querySelectorAll<HTMLElement>('.rb-trail__item');
     if (!pool.length) return;
     const el = pool[idxRef.current % pool.length];
     idxRef.current += 1;

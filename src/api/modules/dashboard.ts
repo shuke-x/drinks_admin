@@ -1,17 +1,19 @@
+import type { LegacyDto } from '../types';
+import { apiError } from '../types';
 // ------------------------------------------------------------------
 // 工作台模块。文档 4.3 未定义聚合接口:优先请求 GET /admin/dashboard,
 // 后端未实现(404 / 405 / 501)时降级为用各业务模块的标准接口拼装;
 // 某模块无权限(403)则静默省略,401 照常抛出触发自动登出。
 // ------------------------------------------------------------------
-import { request } from '../request';
 import { asArr } from '../normalize';
+import { request } from '../request';
+import { auditApi } from './audit';
 import { cocktailApi } from './cocktail';
 import { userApi } from './user';
-import { auditApi } from './audit';
 
 async function compose() {
-  const soft = (p) => p.catch((e) => { if (e.status === 401) throw e; return undefined; });
-  const total = (params) => cocktailApi.list({ ...params, page: 1, pageSize: 1 }).then((r) => r.total);
+  const soft = <T>(p: Promise<T>) => p.catch((e: { status?: number }) => { if (e.status === 401) throw e; return undefined; });
+  const total = (params: LegacyDto) => cocktailApi.list({ ...params, page: 1, pageSize: 1 }).then((r) => r.total);
 
   const [pending, published, offline, rejected, draft, queue, hot, uAll, uDis, audits] =
     await Promise.all([
@@ -27,7 +29,7 @@ async function compose() {
       soft(auditApi.list({ page: 1, pageSize: 50 })),
     ]);
 
-  const data = {};
+  const data: LegacyDto = {};
   if (pending !== undefined) Object.assign(data, { pending, published, offline, rejected, draft });
   if (queue) data.pendingQueue = queue.items;
   if (hot?.items?.length) {
@@ -40,8 +42,8 @@ async function compose() {
         owner: c.owner ?? null,
       }));
     // 后端有热度字段则按热度排序;没有就保持服务端顺序兜底展示
-    if (data.hotCocktails.some((c) => c.weeklyViews != null)) {
-      data.hotCocktails.sort((a, b) => (b.weeklyViews || 0) - (a.weeklyViews || 0));
+    if (data.hotCocktails.some((c: LegacyDto) => c.weeklyViews != null)) {
+      data.hotCocktails.sort((a: LegacyDto, b: LegacyDto) => (b.weeklyViews || 0) - (a.weeklyViews || 0));
     }
   }
   if (uAll) {
@@ -70,8 +72,8 @@ export const dashboardApi = {
           recentAudits: raw.recentAudits ? asArr(raw.recentAudits) : raw.recentAudits,
         };
       }
-    } catch (e) {
-      if (![404, 405, 501].includes(e.status)) throw e;
+    } catch (caught) { const e = apiError(caught);
+      if (![404, 405, 501].includes(e.status ?? 0)) throw e;
     }
     return compose();
   },

@@ -1,1 +1,1 @@
-export function UserStatusBadge({ status }) { const on = status === 'active'; return <span className={`badge badge--${on ? 'green' : 'red'}`}><i className="badge__dot" />{on ? '启用中' : '已禁用'}</span>; }
+export function UserStatusBadge({ status }: { status: string }) { const on = status === 'active'; return <span className={`badge badge--${on ? 'green' : 'red'}`}><i className="badge__dot" />{on ? '启用中' : '已禁用'}</span>; }
