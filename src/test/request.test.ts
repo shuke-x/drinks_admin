@@ -8,10 +8,17 @@ describe('cookie and bearer transport', () => {
     const { request } = await client('cookie'); document.cookie = 'backbar_csrf=proof; path=/';
     const fetch = vi.fn().mockResolvedValue(json({ ok: true })); vi.stubGlobal('fetch', fetch);
     await request.patch('/admin/roles/test', { name: 'new' });
-    expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'include', headers: { 'X-CSRF-Token': 'proof' } });
+    expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'include', headers: { 'x-csrf-token': 'proof', 'x-auth-mode': 'cookie' } });
     fetch.mockResolvedValue(json({ ok: true }));
     await request.postForm('/upload/image', new FormData());
-    expect(fetch.mock.calls[1][1]).toMatchObject({ credentials: 'include', headers: { 'X-CSRF-Token': 'proof' } });
+    expect(fetch.mock.calls[1][1]).toMatchObject({ credentials: 'include', headers: { 'x-csrf-token': 'proof', 'x-auth-mode': 'cookie' } });
+  });
+  it('opts into cookie challenge before any CSRF cookie exists', async () => {
+    const { request } = await client('cookie');
+    const fetch = vi.fn().mockResolvedValue(json({ challengeId: 'id' })); vi.stubGlobal('fetch', fetch);
+    await request.get('/auth/challenge');
+    expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'include', headers: { 'x-auth-mode': 'cookie' } });
+    expect(fetch.mock.calls[0][1].headers['x-csrf-token']).toBeUndefined();
   });
   it('refuses unsafe cookie requests without CSRF credentials', async () => {
     const { request } = await client('cookie'); const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
@@ -36,7 +43,7 @@ describe('cookie and bearer transport', () => {
     const { request } = await client('memory'); const session = await import('../api/session'); session.setAccessToken('access');
     const fetch = vi.fn().mockResolvedValue(json({}, 401)); vi.stubGlobal('fetch', fetch);
     await expect(request.get('/auth/me')).rejects.toMatchObject({ status: 401 });
-    expect(fetch).toHaveBeenCalledOnce(); expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'omit', headers: { Authorization: 'Bearer access' } });
+    expect(fetch).toHaveBeenCalledOnce(); expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'omit', headers: { authorization: 'Bearer access' } });
     expect(session.getAccessToken()).toBeNull();
   });
 });

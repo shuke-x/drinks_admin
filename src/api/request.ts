@@ -29,7 +29,9 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { credentials: cookieSession ? 'include' : 'omit', ...options, signal: controller.signal });
+    const headers = new Headers(options.headers);
+    if (cookieSession) headers.set('X-Auth-Mode', 'cookie');
+    return await fetch(url, { credentials: cookieSession ? 'include' : 'omit', ...options, headers: Object.fromEntries(headers.entries()), signal: controller.signal });
   } catch (caught) { const error = apiError(caught);
     if (caught instanceof Error && caught.name === 'AbortError') throw timeoutError(timeoutMs);
     throw error;

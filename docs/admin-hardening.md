@@ -4,11 +4,11 @@
 
 默认 `VITE_AUTH_MODE=memory`，兼容现有 Bearer 后端。access token 仅保存在请求模块内存中，不进入 Redux；前端最多使用十分钟。refresh token 不保存也不用于自动刷新。刷新、关闭页面或认证过期后需要重新登录。启动时清理旧版本 localStorage / sessionStorage 的两个 token 键，保留主题偏好。
 
-前端十分钟限制不能缩短已签发 JWT 的服务端有效期。后端仍需将管理端 access token TTL 设为不超过十分钟，并实现禁用账号、权限变化及注销后的会话撤销。本仓库没有后端，未修改或验证线上 Cookie、JWT TTL 或撤销策略。
+前端十分钟限制不能缩短已签发 JWT 的服务端有效期。配套 drinks_server 已实现 600 秒 access TTL、会话撤销及 Cookie/CSRF 契约；需部署该后端并完成真实 HTTPS 验收后生效。后端部署说明见 drinks_server/docs/admin-cookie-auth.md。
 
 推荐在后端完成以下契约后设置 `VITE_AUTH_MODE=cookie` 并重新构建：
 
-1. 通过同源 `/api/v1` 反向代理提供接口。会话 Cookie 使用 `Secure; HttpOnly; SameSite=Strict`（确需跨站入口时评估 `Lax`），限定 Path，避免宽泛 Domain。生产使用 HTTPS。
+1. 通过同源 `/api/v1` 反向代理提供接口。前端所有 Cookie 模式请求（包括 challenge）携带 `X-Auth-Mode: cookie`，使后端与原生 App 的 Bearer 模式区分。后端配置 `AUTH_COOKIE_ENABLED=true`、`NODE_ENV=production`，`CORS_ORIGINS` 包含后台完整 origin，即使同源也必须配置。会话 Cookie 使用 `Secure; HttpOnly; SameSite=Strict`（确需跨站入口时评估 `Lax`），限定 Path，避免宽泛 Domain。生产使用 HTTPS。
 2. `GET /auth/challenge` 在返回 RSA 公钥和 challengeId 的同时，签发与会话/挑战绑定的 `backbar_csrf` Cookie。该 Cookie 可由 JS 读取，因为它只存 CSRF 凭据，不能存会话令牌；同源部署时其 Path 必须覆盖管理页面。
 3. 登录、刷新、注销及所有非 GET/HEAD/OPTIONS 请求（包括上传）必须校验 `X-CSRF-Token`，验证其绑定关系，并校验 Origin；不能只比较客户端自造的两份字符串。前端缺少 CSRF Cookie 时会拒绝发送变更请求。
 4. `POST /auth/login` 通过 Set-Cookie 建立会话；响应可只含 user/permissions。不要在响应 JSON 中返回 refresh token。`GET /auth/me` 返回带 id 的 user 及有效 permissions。
