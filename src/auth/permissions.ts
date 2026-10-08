@@ -23,6 +23,7 @@ export const PERMISSION = {
   IMPORTS_MANAGE: 'imports.manage',
   CATEGORIES_MANAGE: 'categories.manage',
   RECOMMENDATIONS_MANAGE: 'recommendations.manage',
+  REPORTS_MANAGE: 'reports.manage',
 } as const;
 
 export type PermissionCode = typeof PERMISSION[keyof typeof PERMISSION];
@@ -34,6 +35,7 @@ export const PERMISSION_GROUPS: Record<string, string> = {
   cocktails: '酒单',
   categories: '酒单分类',
   recommendations: '今日推荐',
+  reports: '内容举报',
   imports: '数据导入',
   roles: '权限系统',
   audit_logs: '日志',

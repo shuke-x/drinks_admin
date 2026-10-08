@@ -11,6 +11,7 @@ import { useTheme } from '../theme/theme';
 
 const NAV = [
   { to: '/drink-records', label: '品饮记录', icon: 'glass', perm: PERMISSION.RECORDS_REVIEW },
+  { to: '/reports', label: '内容举报', icon: 'shield', perm: PERMISSION.REPORTS_MANAGE },
   { to: '/flavor-directions', label: '风味配置', icon: 'grid', perm: PERMISSION.FLAVORS_MANAGE },
   { to: '/', label: '工作台', icon: 'grid', end: true },
   { to: '/cocktails', label: '酒单管理', icon: 'glass', perm: PERMISSION.COCKTAILS_READ },
@@ -23,6 +24,7 @@ const NAV = [
 
 const TITLES = [
   { match: /^\/drink-records/, title: '品饮记录审核' },
+  { match: /^\/reports/, title: '用户内容举报' },
   { match: /^\/flavor-directions/, title: '风味配置与匹配规则' },
   { match: /^\/cocktails\/.+/, title: '酒单详情' },
   { match: /^\/cocktails/, title: '酒单管理' },

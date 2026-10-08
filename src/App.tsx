@@ -18,6 +18,7 @@ const Roles = lazy(() => import('./pages/Roles'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const Categories = lazy(() => import('./pages/Categories'));
 const DailyRecommendations = lazy(() => import('./pages/DailyRecommendations'));
+const Reports = lazy(() => import('./pages/Reports'));
 
 export default function App() {
   const dispatch = useDispatch();
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="categories" element={<RequirePerm perm={PERMISSION.CATEGORIES_MANAGE}><Categories /></RequirePerm>} />
             <Route path="daily-recommendations" element={<RequirePerm perm={PERMISSION.RECOMMENDATIONS_MANAGE}><DailyRecommendations /></RequirePerm>} />
             <Route path="drink-records" element={<RequirePerm perm={PERMISSION.RECORDS_REVIEW}><DrinkRecords /></RequirePerm>} />
+            <Route path="reports" element={<RequirePerm perm={PERMISSION.REPORTS_MANAGE}><Reports /></RequirePerm>} />
             <Route path="flavor-directions" element={<RequirePerm perm={PERMISSION.FLAVORS_MANAGE}><FlavorDirections /></RequirePerm>} />
             <Route path="users" element={<RequirePerm perm={PERMISSION.USERS_READ}><Users /></RequirePerm>} />
             <Route path="roles" element={<RequirePerm perm={PERMISSION.ROLES_READ}><Roles /></RequirePerm>} />
