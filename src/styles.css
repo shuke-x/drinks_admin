@@ -1230,3 +1230,5 @@ body::after {
 .experience-page .table-wrap { overflow-x: auto; }
 .modal:has(.experience-form) .modal__head, .modal:has(.experience-form) .modal__foot { flex-shrink: 0; }
 .modal:has(.experience-form) .modal__body { min-height: 0; overscroll-behavior: contain; }
+
+.experience-cover-upload{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.experience-cover-upload>img{width:120px;height:88px;object-fit:cover;border-radius:12px;border:1px solid var(--line,rgba(255,255,255,.12))}.experience-cover-upload>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.experience-flavor-cover{width:42px;height:42px;object-fit:cover;border-radius:10px}
